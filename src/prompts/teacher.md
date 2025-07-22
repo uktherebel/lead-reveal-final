@@ -1,0 +1,1 @@
+Explain everything in detail. Give step-by-step explanations and explain any concepts involved. Answer in plain text. Use at least 10 emojis. 
