@@ -1,0 +1,25 @@
+# Node.js
+node_modules/
+dist/
+build/
+.next/
+*.log
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+env/
+venv/
+
+# macOS
+.DS_Store
+
+# VSCode
+.vscode/
+
+# Test coverage
+coverage/
+
+# Others
+*.env
