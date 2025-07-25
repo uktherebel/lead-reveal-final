@@ -1,7 +1,7 @@
 from langchain.prompts import ChatPromptTemplate
 from langchain_ollama import ChatOllama
 
-def create_code_chain(): 
+def create_code_chain(task): 
   llm = ChatOllama(
     model='qwen2.5-coder:7b',
     base_url='http://localhost:11434'
