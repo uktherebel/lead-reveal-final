@@ -27,23 +27,22 @@ export async function activate(context: vscode.ExtensionContext) {
         });
 
         if (task) {
-          try {
-            const code = await client.generateCode(task);
-            const editor = vscode.window.activeTextEditor;
-            if (editor && !editor.document.isUntitled) {
-              const success = await editor.edit((editBuilder) => {
-                editBuilder.insert(editor.selection.active, code);
-              });
-              if (!success) {
-                vscode.window.showErrorMessage("Failed to generate code");
-              }
-            }
-          } catch (err) {
-            const errorMessage =
-              err instanceof Error ? err.message : "Unknown error occurred";
-            vscode.window.showErrorMessage(`Error: ${errorMessage}`);
-          }
-        }
+    try {
+        const code = await client.generateCode(task);
+        
+        // Always create a new document for now
+        const document = await vscode.workspace.openTextDocument({
+            content: code,
+            language: 'markdown'
+        });
+        await vscode.window.showTextDocument(document);
+        
+        vscode.window.showInformationMessage("Code generated successfully!");
+    } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : "Unknown error occurred";
+        vscode.window.showErrorMessage(`Error: ${errorMessage}`);
+    }
+}
       }
     )
   );
