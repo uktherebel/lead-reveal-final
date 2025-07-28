@@ -28,14 +28,42 @@ export async function activate(context: vscode.ExtensionContext) {
 
         if (task) {
     try {
-        const code = await client.generateCode(task);
+        const response = await client.generateCode(task);
         
-        // Always create a new document for now
-        const document = await vscode.workspace.openTextDocument({
-            content: code,
-            language: 'markdown'
-        });
-        await vscode.window.showTextDocument(document);
+        // Create content with all available data
+        let content = response.code || '';
+        if (response.steps && response.steps.length > 0) {
+            content += '\n\n## Learning Steps:\n';
+            response.steps.forEach((step: string, index: number) => {
+                content += `${index + 1}. ${step}\n`;
+            });
+        }
+        if (response.messages && response.messages.length > 0) {
+            content += '\n\n## Messages:\n';
+            response.messages.forEach((message: string) => {
+                content += `- ${message}\n`;
+            });
+        }
+        
+        // Create a new file in the workspace
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const fileName = `generated-code-${timestamp}.md`;
+        
+        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+        if (workspaceFolder) {
+            const filePath = path.join(workspaceFolder.uri.fsPath, fileName);
+            fs.writeFileSync(filePath, content);
+            
+            const document = await vscode.workspace.openTextDocument(filePath);
+            await vscode.window.showTextDocument(document);
+        } else {
+            // Fallback to opening in new untitled document
+            const document = await vscode.workspace.openTextDocument({
+                content: content,
+                language: 'markdown'
+            });
+            await vscode.window.showTextDocument(document);
+        }
         
         vscode.window.showInformationMessage("Code generated successfully!");
     } catch (err) {

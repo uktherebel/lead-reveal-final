@@ -9,7 +9,7 @@ export class xAICodeGeneratorClient {
   private pendingRequests = new Map<
     string,
     {
-      resolve: (value: string) => void;
+      resolve: (value: any) => void;
       reject: (reason: any) => void;
       timeout: NodeJS.Timeout;
     }
@@ -62,7 +62,7 @@ export class xAICodeGeneratorClient {
         this.pendingRequests.delete(requestId);
 
         if (response.status === "success") {
-          pending.resolve(response.code);
+          pending.resolve(response);
         } else {
           pending.reject(new Error(response.error || "Generation failed"));
         }
@@ -101,7 +101,7 @@ export class xAICodeGeneratorClient {
     this.pendingRequests.clear();
   }
 
-  async generateCode(task: string): Promise<string> {
+  async generateCode(task: string): Promise<any> {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       throw new Error("Not connected to backend");
     }
@@ -115,7 +115,7 @@ export class xAICodeGeneratorClient {
       const timeout = setTimeout(() => {
         this.pendingRequests.delete(requestId);
         reject(new Error("Request timeout after 30 seconds"));
-      }, 30000);
+      }, 300000);
 
       // Store pending request
       this.pendingRequests.set(requestId, { resolve, reject, timeout });

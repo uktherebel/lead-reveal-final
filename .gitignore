@@ -5,21 +5,36 @@ build/
 .next/
 *.log
 
-# Python
+# Python build artifacts
+*.egg-info/
+build/
+dist/
 __pycache__/
 *.pyc
 *.pyo
-env/
+*.pyd
+.Python
+
+# Virtual environments
 venv/
+env/
+ENV/
 
-# macOS
+# OS
 .DS_Store
+Thumbs.db
 
-# VSCode
+# IDE
 .vscode/
+.idea/
+*.swp
+*.swo
 
 # Test coverage
 coverage/
+
+# Node modules (if any)
+node_modules/
 
 # Others
 *.env

@@ -1,7 +1,7 @@
 import logging 
 from typing import Dict, Any 
 from src.state.schemas import LearningState
-from src.Langchain.llm_config import create_code_chain, decomposition_chain
+from src.langchain.llm_config import create_code_chain, decomposition_chain
 from datetime import datetime
 
 logger = logging.getLogger(__name__)

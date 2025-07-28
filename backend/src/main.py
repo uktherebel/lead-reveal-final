@@ -12,8 +12,8 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse 
 import os, json
-from ai.openai import OpenAIWrapper
-from ai.qwen import Qwen
+# from ai.openai import OpenAIWrapper
+# from ai.qwen import Qwen
 from dotenv import load_dotenv
 from pydantic import BaseModel, ConfigDict
 from typing import List, Annotated
@@ -22,36 +22,49 @@ import numpy as np
 # from .pydantic.base import ChatRequest, ChatResponse
 # from .pydantic.lead_and_reveal import PlanItem, PlanResponse, LeadAndRevealRequest, LeadAndRevealResponse
 from datetime import datetime
-from Langchain.llm_config import create_code_chain
+from src.langchain.llm_config import create_code_chain
+import json, logging 
+from src.graphs.simple_graph import create_simple_graph
+from src.state.schemas import create_initial_state
 import logging
+from contextlib import asynccontextmanager
 load_dotenv()
-
-# --- App Initialization ---
-app = FastAPI()
-app.add_middleware(CORSMiddleware, allow_origins=["*"])
 
 logger = logging.getLogger(__name__)
 
-# --- AI Configuration ---
-def load_system_prompt(): 
-   try: 
-      with open('src/prompts/teacher.md', 'r') as f: 
-         return f.read()
+active_graphs = {}
 
-   except FileNotFoundError: 
-      return None 
+@asynccontextmanager 
+async def lifespan(app: FastAPI): 
+    logger.info("Starting application...")
+
+    yield 
+
+    logger.info('Shutting down...')
+    active_graphs.clear()
+
+app = FastAPI(title='Cognitive Learning System', lifespan=lifespan)
+app.add_middleware(CORSMiddleware, allow_origins=["*"])
+
+# # --- AI Configuration ---
+# def load_system_prompt(): 
+#    try: 
+#       with open('src/prompts/teacher.md', 'r') as f: 
+#          return f.read()
+
+#    except FileNotFoundError: 
+#       return None 
    
-system_prompt = load_system_prompt()
+# system_prompt = load_system_prompt()
 openai_api_key = os.getenv("OPENAI_API_KEY")
 qwen_api_key = os.getenv('QWEN_API_KEY')
 
-if not qwen_api_key: 
-   raise ValueError('QWEN_API_KEY environment variable not set.')
+# if not qwen_api_key: 
+#    raise ValueError('QWEN_API_KEY environment variable not set.')
 
-ai_platform = Qwen(
-   api_key=qwen_api_key, 
-   # system_prompt=system_prompt
-)
+# ai_platform = Qwen(
+#    api_key=qwen_api_key
+#    )
 
 # --- API Endpoints ---
 @app.get("/")
@@ -62,6 +75,7 @@ async def root():
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     logger.info(f"Client connected")
+    session_id = None
     
     try:
         while True:
@@ -71,22 +85,51 @@ async def websocket_endpoint(websocket: WebSocket):
             
             if request.get("command") == "generate":
                 try:
-                    # Generate code using your chain
-                    llm, prompt_template = create_code_chain(request["task"])
-                    result = llm.invoke(
-                        prompt_template.invoke(
-                            {
-                                'task': request["task"]
+                    # Create new learning session
+                    task = request.get('task', '')
+                    technique = request.get('technique', 'lead-and-reveal')
+                    request_id = request.get('requestId')
+
+                    # create init state 
+                    initial_state = create_initial_state(task, technique)
+                    session_id = initial_state['session_id']
+
+                    # create and store graph 
+                    graph = create_simple_graph()
+                    active_graphs[session_id] = graph
+
+                    # running the graph 
+                    try: 
+                        final_state = await graph.ainvoke(initial_state)
+
+                        # send results to user 
+                        if final_state.get('code_solution'): 
+                            response = {
+                                "status": "success",
+                                "code": final_state['code_solution'],
+                                "steps": final_state.get('steps', []),
+                                "messages": final_state.get('messages', []),
+                                "requestId": request_id
                             }
-                        )
-                    )
-                    code = result.content
-                    
-                    response = {
-                        "status": "success",
-                        "code": code,
-                        "requestId": request.get("requestId")
-                    }
+                        else: 
+                            response = {
+                                "status": "error",
+                                "error": final_state.get('error', 'Failed to generate code'),
+                                "requestId": request_id
+                            }
+
+                    except Exception as e: 
+                        logger.error(f'Graph execution error: {e}')
+                        response = {
+                            "status": "error",
+                            "error": str(e),
+                            "requestId": request_id
+                        }
+                             
+                    finally: 
+                        if session_id in active_graphs: 
+                            del active_graphs[session_id]
+                         
                 except Exception as e:
                     logger.error(f"Generation error: {e}")
                     response = {
@@ -99,6 +142,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 
     except WebSocketDisconnect:
         logger.info("Client disconnected")
+        if session_id and session_id in active_graphs: 
+            del active_graphs[session_id]
 
 @app.post('/generate')
 async def generate_code(task: str): 
