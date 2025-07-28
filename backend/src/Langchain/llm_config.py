@@ -1,106 +1,102 @@
+from langchain.prompts import ChatPromptTemplate, PromptTemplate
 from langchain_ollama import ChatOllama
-from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+from langchain_openai import ChatOpenAI
+from langchain_core.output_parsers import StrOutputParser 
+from langchain.output_parsers import ResponseSchema, StructuredOutputParser
 from dotenv import load_dotenv
-from langchain.prompts import ChatPromptTemplate
-from langchain.schema.output_parser import StrOutputParser
-from langchain_ollama import ChatOllama
-from langchain_core.runnables.base import RunnableLambda, RunnableParallel
 
 load_dotenv()
-model = ChatOllama(
-  model='qwen2.5-coder:7b',
-  base_url="http://localhost:11434",
-)
 
-system_message = ('system', 'You\'re an expert computer scientist.')
-prompt_template = ChatPromptTemplate.from_messages(
-  [
-    system_message,
-    ('human', 'Give step-by-step code and code explanations for this programming problem: {programming_problem}')
-  ]
-)
+def _llm_for_decomposition(): 
+   llm = ChatOpenAI(
+      model='gpt-4o', 
+      temperature = 0.4,
+   )
+   return llm 
 
-decomposition_template = ChatPromptTemplate.from_messages(
-  [
-    system_message, 
-    ('human', 'Break the following solution into learnable steps:\n\n{code}')
-  ]
-)
+def _llm(): 
+    llm = ChatOllama(
+    model='qwen2.5-coder:7b',
+    base_url='http://localhost:11434', 
+    temperature=0.2,
+    num_ctx=4096,
+    top_p=0.95,
 
-decomposition_chain = RunnableLambda(
-  lambda x : {'code': x} | 
-  decomposition_template |
-  model | 
-  StrOutputParser()
   )
+    return llm 
 
-question_template = ChatPromptTemplate.from_messages(
-  [
-    system_message, 
-    ('human', 'Create a Socratic question for each of the following steps:\n\n{steps}')
-  ]
-)
+def _get_format_instructions(): 
+    # Define the structure more explicitly for a list
+    steps_schema = ResponseSchema(
+        name='steps',
+        description='''A JSON array where each item is an object with these exact keys:
+        - "step_number" (integer): The number of the step, increment by 1
+        - "explanation" (string): What does this step entail? What's the justification for having this step?
+        - "concept" (string): What are the concepts involved for this particular step?
+        
+        Example format:
+        {
+          "steps": [
+            {
+              "step_number": 1,
+              "explanation": "...",
+              "concept": "..."
+            },
+            {
+              "step_number": 2,
+              "explanation": "...",
+              "concept": "..."
+            }
+          ]
+        }''',
+        type='array'
+    )
+        
+    response_schemas = [steps_schema]
+    output_parser = StructuredOutputParser.from_response_schemas(response_schemas=response_schemas)
+    format_instructions = output_parser.get_format_instructions()
+    return format_instructions, output_parser
 
-question_chain = RunnableLambda(
-  lambda x : {'steps': x} | 
-  question_template | 
-  model | 
-  StrOutputParser()
-)
+def create_code_chain(task: str): 
+  llm = _llm()
+  prompt = PromptTemplate(
+        input_variables=["task"],
+        template="""You are an expert Python programmer and teacher.
 
-code_chain = prompt_template | model | StrOutputParser()
+                  Generate clean, educational Python code for the following task:
+                  {task}
 
-chain = (
-  code_chain 
-  | decomposition_chain 
-  | question_chain
-)
+                  Requirements:
+                  1. Include a proper function definition
+                  2. Add descriptive docstring
+                  3. Include helpful comments
+                  4. Handle edge cases
+                  5. Follow Python best practices
 
-question = """
-23. Merge k Sorted Lists
-Hard
-Topics
-premium lock icon
-Companies
-You are given an array of k linked-lists lists, each linked-list is sorted in ascending order.
+                  Code:
+                  """
+    )
+  chain = prompt | llm | StrOutputParser()
+  return chain.invoke({'task': task}) 
 
-Merge all the linked-lists into one sorted linked-list and return it.
+def decomposition_chain(code: str): 
+   llm = _llm_for_decomposition()
+   format_instructions, output_parser = _get_format_instructions()
+   decomposition_prompt = ChatPromptTemplate.from_template(
+      """ 
+        For the following code / programming problem: 
+          - Decompose the code into meaningful, atomic steps that promote critical thinking and active learning.
+        Code: {code}
 
+        For each step, store the information in this format: 
+        {format_instructions}
+      """
+   )
+   chain = decomposition_prompt | llm | StrOutputParser()
+   response = chain.invoke({
+      'code': code, 
+      'format_instructions': format_instructions,
+      })
+   formatted_response = output_parser.parse(response) 
+   return formatted_response
 
-Example 1:
-
-Input: lists = [[1,4,5],[1,3,4],[2,6]]
-Output: [1,1,2,3,4,4,5,6]
-Explanation: The linked-lists are:
-[
-  1->4->5,
-  1->3->4,
-  2->6
-]
-merging them into one sorted linked list:
-1->1->2->3->4->4->5->6
-Example 2:
-
-Input: lists = []
-Output: []
-Example 3:
-
-Input: lists = [[]]
-Output: []
- 
-
-Constraints:
-
-k == lists.length
-0 <= k <= 104
-0 <= lists[i].length <= 500
--104 <= lists[i][j] <= 104
-lists[i] is sorted in ascending order.
-The sum of lists[i].length will not exceed 104.
-"""
-
-result = chain.invoke(
-  {'programming_problem': question}
-)
-
-print(result)

@@ -22,7 +22,7 @@ import numpy as np
 # from .pydantic.base import ChatRequest, ChatResponse
 # from .pydantic.lead_and_reveal import PlanItem, PlanResponse, LeadAndRevealRequest, LeadAndRevealResponse
 from datetime import datetime
-from llm_config import create_code_chain
+from Langchain.llm_config import create_code_chain
 import logging
 load_dotenv()
 
