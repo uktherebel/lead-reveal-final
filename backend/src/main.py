@@ -12,17 +12,10 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse 
 import os, json
-# from ai.openai import OpenAIWrapper
-# from ai.qwen import Qwen
 from dotenv import load_dotenv
 from pydantic import BaseModel, ConfigDict
 from typing import List, Annotated
 import numpy as np 
-# import ollama
-# from .pydantic.base import ChatRequest, ChatResponse
-# from .pydantic.lead_and_reveal import PlanItem, PlanResponse, LeadAndRevealRequest, LeadAndRevealResponse
-from datetime import datetime
-from src.langchain.llm_config import create_code_chain
 import json, logging 
 from src.graphs.simple_graph import create_simple_graph
 from src.state.schemas import create_initial_state
@@ -58,13 +51,6 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"])
 # system_prompt = load_system_prompt()
 openai_api_key = os.getenv("OPENAI_API_KEY")
 qwen_api_key = os.getenv('QWEN_API_KEY')
-
-# if not qwen_api_key: 
-#    raise ValueError('QWEN_API_KEY environment variable not set.')
-
-# ai_platform = Qwen(
-#    api_key=qwen_api_key
-#    )
 
 # --- API Endpoints ---
 @app.get("/")
@@ -144,18 +130,6 @@ async def websocket_endpoint(websocket: WebSocket):
         logger.info("Client disconnected")
         if session_id and session_id in active_graphs: 
             del active_graphs[session_id]
-
-@app.post('/generate')
-async def generate_code(task: str): 
-    llm, prompt_template = create_code_chain()
-    result = llm.invoke(
-        prompt_template.invoke(
-            {
-                'task': task
-            }
-        )
-    )
-    return {'code': result.content}
 
 # @app.post("/chat", response_model=ChatResponse)
 # async def chat(request: ChatRequest):

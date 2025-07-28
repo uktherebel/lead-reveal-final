@@ -1,8 +1,9 @@
 import logging 
 from typing import Dict, Any 
 from src.state.schemas import LearningState
-from src.langchain.llm_config import create_code_chain, decomposition_chain
+from src.workers.coder import Coder
 from datetime import datetime
+from src.workers.decomposer import Decomposer
 
 logger = logging.getLogger(__name__)
 
@@ -10,7 +11,8 @@ def generate_code_node(state: LearningState) -> Dict[str, any]:
   task = state['task_description']
   logger.info(f"Generating code for the task: {task}")
   try: 
-    code = create_code_chain(task)
+    coder = Coder()
+    code = coder.generate_code(task)
     return {
       'code_solution': code, 
       'messages': state['messages'] + [{
@@ -32,6 +34,7 @@ def generate_code_node(state: LearningState) -> Dict[str, any]:
     }
 
 def decompose_code_node(state: LearningState) -> Dict[str, any]: 
+  decomposer = Decomposer()
   logger.info('Decomposing code into steps')
   code = state.get('code_solution')
 
@@ -40,7 +43,7 @@ def decompose_code_node(state: LearningState) -> Dict[str, any]:
             "error": "No code to decompose",
             "steps": []
         }
-  steps = decomposition_chain(code)['steps']
+  steps = decomposer.generate_steps(code)['steps']
   return {
     'steps': steps,
     'total_steps': len(steps), 

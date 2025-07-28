@@ -58,8 +58,5 @@ async def test_graph_streaming():
 
 
 if __name__ == "__main__":
-    print("Make sure Ollama is running: ollama serve")
-    print("Make sure model is available: ollama pull qwen2.5-coder:7b\n")
-
     asyncio.run(test_simple_flow())
     asyncio.run(test_graph_streaming())
