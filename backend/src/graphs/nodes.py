@@ -36,23 +36,44 @@ def generate_code_node(state: LearningState) -> Dict[str, any]:
 def decompose_code_node(state: LearningState) -> Dict[str, any]: 
   decomposer = Decomposer()
   logger.info('Decomposing code into steps')
-  code = state.get('code_solution')
+  code = state.get('code_solution', "")
 
   if not code: 
-     return {
-            "error": "No code to decompose",
-            "steps": []
-        }
-  steps = decomposer.generate_steps(code)['steps']
-  return {
-    'steps': steps,
-    'total_steps': len(steps), 
-    'messages': state['messages'] + [{
-      'type': 'steps_created', 
-      'content': f"Created {len(steps)} learning steps", 
-      'timestamp': datetime.now().isoformat()
-    }]
-  }
+     state['messages'].append({
+            "type": "error",
+            "content": "No code to decompose",
+            "timestamp": 'now',
+        })
+     return state 
+  
+  try:
+    steps = decomposer.generate_steps(code)['steps']
+    state['steps'] = steps,
+    state['current_step'] = 0
+    state['total_steps'] = len(steps)
+
+    cognitive_loads = [step.get('cognitive_load', 3) for step in steps]
+    avg_difficulty = sum(cognitive_loads) / len(cognitive_loads) if cognitive_loads else 3
+
+
+    state['messages'].append({
+        'type': 'steps_created', 
+        'content': f"Created {len(steps)} learning steps", 
+        "details": {
+            "total_steps": len(steps),
+            "average_difficulty": round(avg_difficulty, 1),
+            "difficulty_range": f"{min(cognitive_loads)}-{max(cognitive_loads)}"
+        },
+      })
+  
+  except Exception as e: 
+    print(f'Error creating steps: {str(e)}')
+    state['messages'].append({
+      'type': 'error', 
+      'content': f'Failed to generate learning steps: {str(e)}',
+      'timestamp': 'now'
+    }) 
+  return state 
 
 def finalise_node(state: LearningState) -> Dict[str, any]: 
   logger.info("Finalising learning session")
