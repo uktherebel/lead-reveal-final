@@ -2,14 +2,13 @@ from langgraph.graph import StateGraph
 from langgraph.graph import END, START
 from typing import Dict, Any 
 import logging 
-from src.state.schemas import LearningState
-from src.graphs.nodes import (
+from state.schemas import LearningState
+from utils.logging_setup import logger
+from node_functions import (
   generate_code_node, 
   decompose_code_node, 
   finalise_node
 )
-
-logger = logging.getLogger(__name__)
 
 def should_continue(state: LearningState) -> str: 
   if state.get('code_solution') and not state.get('error'):

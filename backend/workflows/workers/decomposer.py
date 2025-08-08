@@ -1,13 +1,10 @@
-from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 from langchain_core.output_parsers import StrOutputParser 
 from langchain.output_parsers import ResponseSchema, StructuredOutputParser
-from langchain.prompts import ChatPromptTemplate, PromptTemplate
-from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 from dotenv import load_dotenv
 from typing import List, Dict
-from src.prompts.decomposition_prompt import decomposition_prompt
+from agents.prompts.decomposition_prompt import decomposition_prompt
 
 load_dotenv()
 

@@ -1,6 +1,6 @@
 from langchain_ollama import ChatOllama
 from langchain_core.output_parsers import StrOutputParser 
-from src.prompts.educational_prompts import EDUCATIONAL_CODE_PROMPT
+from agents.prompts.educational_prompts import EDUCATIONAL_CODE_PROMPT
 from dotenv import load_dotenv
 load_dotenv()
 

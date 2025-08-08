@@ -17,13 +17,13 @@ from pydantic import BaseModel, ConfigDict
 from typing import List, Annotated
 import numpy as np 
 import json, logging 
-from src.graphs.simple_graph import create_simple_graph
-from src.state.schemas import create_initial_state
+from agents.graphs.simple_graph import create_simple_graph
+from workflows.state.schemas import create_initial_state
 import logging
 from contextlib import asynccontextmanager
+from utils.logging_setup import logger
+from Langchain.llm_config import model 
 load_dotenv()
-
-logger = logging.getLogger(__name__)
 
 active_graphs = {}
 
@@ -39,14 +39,6 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title='Cognitive Learning System', lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["*"])
 
-# # --- AI Configuration ---
-# def load_system_prompt(): 
-#    try: 
-#       with open('src/prompts/teacher.md', 'r') as f: 
-#          return f.read()
-
-#    except FileNotFoundError: 
-#       return None 
    
 # system_prompt = load_system_prompt()
 openai_api_key = os.getenv("OPENAI_API_KEY")
@@ -130,29 +122,3 @@ async def websocket_endpoint(websocket: WebSocket):
         logger.info("Client disconnected")
         if session_id and session_id in active_graphs: 
             del active_graphs[session_id]
-
-# @app.post("/chat", response_model=ChatResponse)
-# async def chat(request: ChatRequest):
-#     result = ai_platform.chat(request.prompt)
-#     return ChatResponse(
-#       explanation = result
-#     )
-
-# @app.post("/lead-and-reveal", response_model=LeadAndRevealResponse)
-# async def lead_and_reveal(request: LeadAndRevealRequest):
-#     if request.answer:
-#         # 2. If answer is provided, evaluate it
-#         evaluation = ai_platform.evaluate_answer(request.code_solution, request.answer)
-#         return LeadAndRevealResponse(question="", evaluation=evaluation)
-#     else:
-#         # 1. If no answer, generate a question
-#         question = ai_platform.lead_and_reveal(request.code_solution)
-#         return LeadAndRevealResponse(question=question)
-
-# ai_platform1 = OpenAIWrapper(api_key=openai_api_key)
-
-# @app.post('/event_identifier')
-# async def get_event_details(request: ChatRequest):
-#     result = ai_platform1.chat(request.prompt)
-#     return result
-

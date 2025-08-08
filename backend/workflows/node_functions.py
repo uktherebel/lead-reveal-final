@@ -1,9 +1,9 @@
 import logging 
 from typing import Dict, Any 
-from src.state.schemas import LearningState
-from src.workers.coder import Coder
+from state.schemas import LearningState
+from workers.coder import Coder
 from datetime import datetime
-from src.workers.decomposer import Decomposer
+from workers.decomposer import Decomposer
 
 logger = logging.getLogger(__name__)
 

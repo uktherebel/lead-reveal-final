@@ -1,12 +1,10 @@
 # backend/prompts/educational_prompts.py
 from langchain.prompts import PromptTemplate
 
-# This is our educational prompt template
+# Educational prompt template
 EDUCATIONAL_CODE_PROMPT = PromptTemplate(
-    # input_variables: These are the "blanks" we'll fill in
     input_variables=["task"],
 
-    # template: The actual prompt structure with placeholders
     template="""You are an expert programming tutor. Generate educational code that teaches concepts.
 
 Task: {task}
