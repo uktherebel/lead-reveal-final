@@ -12,6 +12,7 @@ langchain-core
 langchain-openai
 langchain-ollama
 langgraph
+langchain-community
 mistralai
 ollama
 
@@ -20,3 +21,13 @@ numpy
 python-dateutil
 contextvars
 
+websockets
+pydantic-settings
+httpx
+aiofiles
+sqlalchemy
+alembic
+redis
+celery
+pytest
+pytest-asyncio
