@@ -1,4 +1,4 @@
-from openai import OpenAI
+from agents.llms.openai import OpenAI
 from .base import AIPlatform
 import numpy as np
 from pydantic import BaseModel
