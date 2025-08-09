@@ -1,7 +1,7 @@
 import asyncio
 import logging 
-from agents.graphs.simple_graph import create_simple_graph
-from state.schemas import create_initial_state
+from src.graphs.simple_graph import create_simple_graph
+from src.state.schemas import create_initial_state
 import json 
 
 logging.basicConfig(

@@ -17,12 +17,11 @@ from pydantic import BaseModel, ConfigDict
 from typing import List, Annotated
 import numpy as np 
 import json, logging 
-from agents.graphs.simple_graph import create_simple_graph
-from workflows.state.schemas import create_initial_state
+from src.graphs.simple_graph import create_simple_graph
+from src.state.schemas import create_initial_state
 import logging
 from contextlib import asynccontextmanager
 from utils.logging_setup import logger
-from Langchain.llm_config import model 
 load_dotenv()
 
 active_graphs = {}
