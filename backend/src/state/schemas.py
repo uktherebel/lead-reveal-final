@@ -80,30 +80,68 @@ class LearningState(TypedDict):
   analytics_data: Dict['str', Any]
   sandbox_results = List[Dict[str, Any]]
 
-def create_initial_state(task: str, technique: str) -> LearningState: 
+def create_initial_state(
+        task: str, 
+        technique: str, 
+        user_id: Optional[str] = None
+        ) -> LearningState: 
      """
     Factory function to create a new learning state.
-
-    args:
-        task: What the user wants to learn
-        technique: Which learning technique to use
 
     returns:
         Dictionary of state updates (merged with existing state)
     """
+     now = datetime.now().isoformat()
+     session_id = f'session_{datetime.now().timestamp()}'
      return {
-         'task_description': task, 
-         'technique': technique, 
-         'session_id': f"session_{datetime.now().timestamp()}",
-         'current_step': 0,
-         'total_steps': 0, 
-         'code_solution': "", 
-         "steps": [],
-         "messages": [],
-         "completed": False,
-         "started_at": datetime.now().isoformat(),
-         "completed_at": None,
-         "error": None
-     }
+        # Identification
+        'session_id': session_id,
+        'user_id': user_id,
+
+        # Task config
+        'task_description': task,
+        'technique': technique,
+        'difficulty_level': 'intermediate',
+
+        # Content
+        'code_solution': '',
+        'validated_code': None,
+        'validation_results': None,
+
+        # Steps
+        'steps': [],
+        'current_step': 0,
+        'total_steps': 0,
+        'current_phase': LearningPhase.INITIALIZATION,
+
+        # Q&A
+        'current_question': None,
+        'user_answers': [],
+        'answer_attempts': 0,
+        'hints_used': 0,
+
+        # Performance
+        'score': 0,
+        'accuracy_rate': 0.0,
+        'average_response_time': 0.0,
+        'learning_velocity': 0.0,
+
+        # Session
+        'messages': [],
+        'completed': False,
+        'can_resume': True,
+        'error': None,
+
+        # Timestamps
+        'started_at': now,
+        'updated_at': now,
+        'completed_at': None,
+
+        # Advanced
+        'checkpoint_data': {},
+        'analytics_data': {},
+        'sandbox_results': []
+    }
+   
 
     
