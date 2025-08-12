@@ -5,6 +5,7 @@ from e2b_code_interpreter import Sandbox
 from openevals.code.pyright import create_pyright_evaluator
 from openevals.code.e2b.execution import create_e2b_execution_evaluator
 import re
+import ast 
 
 logger = logging.getLogger(__name__)
 
@@ -49,29 +50,40 @@ class SandboxedCodeValidator:
         issues.append(message)
 
     return {
-      'safe': len(issues) == 9,
+      'safe': len(issues) == 0,
       'issues': issues
     }
   
   def _validate_syntax(self, code: str) -> Dict[str, Any]: 
-    pass 
+    try: 
+      result = self.pyright_evaluator(outputs=code)
+      comment = ast.literal_eval(result.get('comment'))
+      return {
+        'success': result.get('score'), 
+        'errors': None if not comment else comment 
+      } 
+    except Exception as e: 
+      return {
+        'success': False, 
+        'errors': str(e)
+      }
 
 
-  def _run_in_sandbox(self, code: str) -> Dict[str, Any]: 
+  async def _run_in_sandbox(self, code: str) -> Dict[str, Any]: 
     try: 
       with Sandbox('OpenEvalsPython') as sandbox: 
         evaluator = create_e2b_execution_evaluator(
           sandbox=sandbox
         )
-        eval_result = evaluator(outputs=code)
+        result = evaluator(outputs=code)
         return {
-          'success': eval_result['score'] == True, 
-          'error': None if eval_result['comment'] in ['[]', '', ' ', '{}', None] else eval_result['comment'],
+          'success': result.get('score'), 
+          'errors': result.get('errors'),
         }
     except Exception as e: 
       return {
         'success': False, 
-        'error': str(e),
+        'errors': str(e),
       } 
 
 
