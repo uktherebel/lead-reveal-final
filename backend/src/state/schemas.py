@@ -39,6 +39,7 @@ class LearningState(TypedDict):
 
   # Task config
   task_description: str 
+  technique: str
   difficulty_level: Literal['beginner', 'intermediate', 'advanced']
 
   # Learning content

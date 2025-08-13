@@ -1,4 +1,4 @@
-from langchain.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate
 decomposition_prompt = ChatPromptTemplate.from_template(
       """ 
         For the following code / programming problem: 

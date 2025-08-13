@@ -8,7 +8,7 @@ def _collect_imports_ast(code: str) -> Set[str]:
   except SyntaxError: 
     return set()
   
-  packages = Set[str] = set()
+  packages: Set[str] = set()
 
   class ImportVisitor(ast.NodeVisitor): 
     def visit_Import(self, node: ast.Import): 
@@ -24,6 +24,23 @@ def _collect_imports_ast(code: str) -> Set[str]:
 
   ImportVisitor().visit(tree)
   return packages
+
+def _is_system_import(package: str) -> bool: 
+  """ Checks whether a single import is a part of the system imports """
+  standard_modules = getattr(sys, 'stdlib_module_names', None)
+  if standard_modules: 
+    return package in standard_modules
+  
+  standard_modules_fallback = {
+    "sys", "os", "math", "random", "re", "json", "time", "datetime",
+    "pathlib", "collections", "itertools", "functools", "typing",
+    "statistics", "subprocess", "asyncio", "heapq", "logging", "importlib",
+    "dataclasses", "argparse", "unittest", "threading", "multiprocessing",
+    "http", "urllib", "email", "decimal", "fractions", "hashlib",
+    "hmac", "gzip", "bz2", "lzma", "sqlite3", "enum", "inspect",
+  }
+  return package in standard_modules_fallback or package in dir(sys.modules['builtins'])
+  
 
 
 if  __name__ == "__main__": 
@@ -125,3 +142,8 @@ def scrape_example():
 
 imports = _collect_imports_ast(code)
 print(imports)
+
+system_imports = set(filter(_is_system_import, imports))
+
+third_party = imports - system_imports
+print(third_party)

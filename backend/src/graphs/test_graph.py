@@ -1,8 +1,17 @@
 import asyncio
 import logging 
-from src.graphs.simple_graph import create_simple_graph
-from src.state.schemas import create_initial_state
-import json 
+import json
+import os
+
+# Set langchain debug to False to avoid compatibility issues
+os.environ["LANGCHAIN_DEBUG"] = "false"
+
+# Monkey patch langchain to add debug attribute
+import langchain
+langchain.debug = False
+
+from simple_graph import create_enhanced_graph
+from src.state.schemas import create_initial_state 
 
 logging.basicConfig(
     level=logging.INFO,
@@ -14,14 +23,18 @@ async def test_simple_flow():
   print('Testing simple flow')
   print('=' * 60)
 
-  graph = create_simple_graph()
+  graph = create_enhanced_graph()
 
   print("\n--- Test 1: Simple Task ---")
   initial_state = create_initial_state(
     task='Write a merge sort in Dart', 
     technique='lead-and-reveal'
   )
-  print(f"Initial state: {json.dumps(initial_state, indent=2)}")
+  # Create a JSON-serializable copy of the state
+  initial_state_json = initial_state.copy()
+  if 'current_phase' in initial_state_json:
+      initial_state_json['current_phase'] = initial_state_json['current_phase'].value
+  print(f"Initial state: {json.dumps(initial_state_json, indent=2)}")
   final_state = await graph.ainvoke(initial_state) 
   # Note: doing final_state = graph.ainvoke(inital_state) would only ret the coroutine 
   # await keyword must be used 
@@ -41,7 +54,7 @@ async def test_graph_streaming():
     print("Testing Streaming Execution")
     print("=" * 60)
 
-    graph = create_simple_graph()
+    graph = create_enhanced_graph()
 
     initial_state = create_initial_state(
         task="Write a bubble sort function in C",
