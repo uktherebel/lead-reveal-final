@@ -13,13 +13,13 @@ class LearningPhase(Enum):
     COMPLETION = "completion"
 
 class StepDetail(BaseModel): 
-    step_number: int 
-    code_snippet: str 
-    explanation: str 
-    concept: str 
-    cognitive_load: int = Field(ge=1, le=5)
+    step_number: int = Field(..., description='The number of the step, increment by 1')
+    code_snippet: str = Field(..., description='The exact code for this step')
+    explanation: str = Field(..., description="What does this step entail? What's the justification for having this step?")
+    concept: str = Field(..., description='What are the concepts involved for this particular step?')
+    cognitive_load: int = Field(..., description="Cognitive load 1-5, where 1=easy, 5=complex", ge=1, le=5)
     questions: List[Dict[str, Any]] = []
-    reveral: bool = False 
+    reveal: bool = False 
 
     @field_validator('cognitive_load')
     @classmethod

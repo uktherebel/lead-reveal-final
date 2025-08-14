@@ -1,69 +1,45 @@
-from langchain_ollama import ChatOllama
-from langchain_openai import ChatOpenAI
-from langchain_core.output_parsers import StrOutputParser 
-from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
 from dotenv import load_dotenv
-from typing import List, Dict
+from typing import List, Dict, Any 
 from src.prompts.decomposition_prompt import decomposition_prompt
+from base_worker import BaseWorker
+from prompts.decomposition_prompt import decomposition_prompt
+from pydantic import Field, BaseModel
+from state.schemas import LearningState, LearningPhase
 
 load_dotenv()
 
-class Decomposer: 
-  def __init__(self): 
-      self.llm = ChatOpenAI(
-      model='gpt-4o', 
-      temperature = 0.4,
-   )
+class Decompose(BaseWorker): 
+  def _setup(self): 
+      self.decomposition_prompt = decomposition_prompt
 
-  def _get_format_instructions(self): 
-      # Define the structure more explicitly for a list
-      steps_schema = ResponseSchema(
-          name='steps',
-          description='''A JSON array where each item is an object with these exact keys:
-          - "step_number" (integer): The number of the step, increment by 1
-          - "explanation" (string): What does this step entail? What's the justification for having this step?
-          - "concept" (string): What are the concepts involved for this particular step?
-          - "cognitive_load" (integer): [1-5, where 1=easy, 5=complex]
-          
-          Example format:
-          {
-            "steps": [
-              {
-                "code": str,
-                "step_number": 1,
-                "explanation": "...",
-                "concept": "...", 
-                "cognitive_load": 3
-              },
-              {
-                "code": str,
-                "step_number": 2,
-                "explanation": "...",
-                "concept": "...", 
-                "cognitive_load": 1
+      class Step(BaseModel): 
+        step_number: int = Field(..., description='The number of the step, increment by 1')
+        code_snippet: str = Field(..., description='The exact code for this step')
+        explanation: str = Field(..., description="What does this step entail? What's the justification for having this step?")
+        concept: str = Field(..., description='What are the concepts involved for this particular step?')
+        cognitive_load: int = Field(..., description="Cognitive load 1-5, where 1=easy, 5=complex", ge=1, le=5)
 
-              }
-            ]
-          }''',
-          type='array'
-      )
-          
-      response_schemas = [steps_schema]
-      output_parser = StructuredOutputParser.from_response_schemas(response_schemas=response_schemas)
-      format_instructions = output_parser.get_format_instructions()
-      return format_instructions, output_parser
+      class StepsSchema(BaseModel): 
+         steps: List[Step] = Field(
+            ..., 
+            description="List of ordered steps; each step must include step_number, code, explanation, concept, and cognitive_load."
+         )
+      
+      self.model = self.llm.with_structured_output(StepsSchema)
 
-  def generate_steps(self, code: str) -> List[Dict]: 
-   format_instructions, output_parser = self._get_format_instructions()
+  async def process(self, code_solution: str):
+     prompt = decomposition_prompt.format_prompt(code=code_solution)
+     steps = self.model.invoke(prompt)
+     return {
+        
+     }
+     
+     
+      
+     
    
-   chain = decomposition_prompt | self.llm | StrOutputParser()
-   response = chain.invoke({
-      'code': code, 
-      'format_instructions': format_instructions,
-      })
-   formatted_response = output_parser.parse(response) 
-   return formatted_response
+   
 
 if __name__ == "__main__": 
   pass 

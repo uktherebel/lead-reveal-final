@@ -9,13 +9,13 @@ backend_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
 if backend_path not in sys.path:
     sys.path.insert(0, backend_path)
 
-from src.state.schemas import LearningState, LearningPhase
-from src.workers.validated_worker import ValidatedSolutionWorker
+from state.schemas import LearningState, LearningPhase
+from backend.src.workers.coder import CodeWorker
 from src.workers.decomposer import Decomposer
 
 logger = logging.getLogger(__name__)
 
-async def generate_validated_code_node(state: LearningState) -> Dict[str, Any]:
+async def generate_code_node(state: LearningState) -> Dict[str, Any]:
     """
     Generate and validate code solution.
     """
@@ -26,7 +26,7 @@ async def generate_validated_code_node(state: LearningState) -> Dict[str, Any]:
         state['current_phase'] = LearningPhase.CODE_GENERATION
 
         # Use validated worker
-        worker = ValidatedSolutionWorker()
+        worker = CodeWorker()
         result = await worker.process({
             'task_description': state['task_description'],
             'difficulty_level': state['difficulty_level']
@@ -71,7 +71,7 @@ async def generate_validated_code_node(state: LearningState) -> Dict[str, Any]:
             'updated_at': datetime.now().isoformat()
         }
 
-async def decompose_validated_code_node(state: LearningState) -> Dict[str, Any]:
+async def decompose_code_node(state: LearningState) -> Dict[str, Any]:
     """
     Decompose validated code into learning steps.
     """

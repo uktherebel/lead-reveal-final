@@ -9,9 +9,8 @@ if backend_path not in sys.path:
 from langgraph.graph import StateGraph, END, START
 from src.state.schemas import LearningState
 from nodes import (
-    generate_validated_code_node,
-    decompose_validated_code_node,
-)
+    generate_code_node,
+    decompose_code_node)
 from edges import (
     should_continue_after_generation,
     should_continue_after_decomposition
@@ -29,8 +28,8 @@ def create_enhanced_graph():
     workflow = StateGraph(LearningState)
 
     # Add nodes
-    workflow.add_node('generate_code', generate_validated_code_node)
-    workflow.add_node('decompose', decompose_validated_code_node)
+    workflow.add_node('generate_code', generate_code_node)
+    workflow.add_node('decompose', decompose_code_node)
     workflow.add_node('finalize', finalize_node)
 
     # Add edges
