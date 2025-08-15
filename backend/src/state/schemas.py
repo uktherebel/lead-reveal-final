@@ -1,7 +1,10 @@
-from typing import TypedDict, List, Optional, Dict, Any, Literal
+from typing import TypedDict, List, Optional, Dict, Any, Literal, Annotated
+from operator import add 
 from datetime import datetime
 from enum import Enum
+from langgraph.graph.message import add_messages
 from pydantic import BaseModel, Field, field_validator
+
 
 class LearningPhase(Enum):
     INITIALIZATION = "initialization"
@@ -12,13 +15,20 @@ class LearningPhase(Enum):
     EVALUATION = "evaluation"
     COMPLETION = "completion"
 
+class Question(BaseModel): 
+    question: str = Field(..., description='The question for the appropriate code snippet')
+    options: List[Any] = Field(..., description='List of options for user to choose from')
+    correct_answer: Any = Field(..., description='The correct answer to the question')
+    hint: List[str] = Field(..., description='List of helpful hints relevant to the questions')
+    explanation: str = Field(..., description='Detailed explanation why this answer was chosen')
+
 class StepDetail(BaseModel): 
     step_number: int = Field(..., description='The number of the step, increment by 1')
     code_snippet: str = Field(..., description='The exact code for this step')
     explanation: str = Field(..., description="What does this step entail? What's the justification for having this step?")
     concept: str = Field(..., description='What are the concepts involved for this particular step?')
     cognitive_load: int = Field(..., description="Cognitive load 1-5, where 1=easy, 5=complex", ge=1, le=5)
-    questions: List[Dict[str, Any]] = []
+    questions: List[Question] = []
     reveal: bool = False 
 
     @field_validator('cognitive_load')
@@ -28,6 +38,7 @@ class StepDetail(BaseModel):
         if not 1 <= v <= 5:
             raise ValueError('Cognitive load must be between 1 and 5')
         return v 
+    
 
 class LearningState(TypedDict): 
   """
@@ -48,25 +59,25 @@ class LearningState(TypedDict):
   validation_results: Optional[Dict[str, Any]]
 
   # Steps 
-  steps: List[StepDetail]
+  steps: Dict[str, List[StepDetail]]
   current_step: int 
   total_steps: int 
   current_phase: LearningPhase
 
   # Q&A tracking
   current_question: Optional[Dict[str, Any]]
-  user_answers: List[Dict[str, any]]
+  user_answers: Annotated[List[Dict[str, any]], add]
   answer_attempts: int 
   hints_used: int
 
-  # Performance matrics 
+  # Performance metrics 
   score: int 
   accuracy_rate: float 
   average_response_time: float 
   learning_velocity: float # steps / min 
 
   # Session management  
-  messages: List[Dict[str, Any]]
+  messages: Annotated[List[Dict[str, Any]], add_messages]
   completed: bool
   can_resume: bool
   error: Optional[str]

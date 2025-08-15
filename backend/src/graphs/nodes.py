@@ -3,15 +3,9 @@ import sys
 import os
 from typing import Dict, Any
 from datetime import datetime
-
-# Add the backend directory to Python path
-backend_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
-if backend_path not in sys.path:
-    sys.path.insert(0, backend_path)
-
 from state.schemas import LearningState, LearningPhase
 from backend.src.workers.coder import CodeWorker
-from src.workers.decomposer import Decomposer
+from workers.decomposer import Decompose
 
 logger = logging.getLogger(__name__)
 
@@ -91,12 +85,12 @@ async def decompose_code_node(state: LearningState) -> Dict[str, Any]:
     try:
         state['current_phase'] = LearningPhase.DECOMPOSITION
 
-        decomposer = Decomposer()
-        result = decomposer.generate_steps(code)
+        decomposer = Decompose()
+        result = decomposer.process(code)
         steps = result.get('steps', [])
 
         # Calculate cognitive load distribution
-        cognitive_loads = [step.get('cognitive_load', 3) for step in steps]
+        cognitive_loads = [step.get('cognitive_load', 3) for step in steps.model_dump().get('steps')]
         avg_load = sum(cognitive_loads) / len(cognitive_loads) if cognitive_loads else 3
 
         return {
