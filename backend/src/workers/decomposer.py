@@ -15,7 +15,7 @@ load_dotenv()
 class Decompose(BaseWorker): 
   def _setup(self): 
       self.decomposition_prompt = decomposition_prompt
-      logger.info("Decomposer initialized")
+      logger.info("Decomposer initialised")
 
       class Step(StepDetail):
          questions: List[str] = Field(..., description='Set to []')
@@ -33,7 +33,7 @@ class Decompose(BaseWorker):
      prompt = decomposition_prompt.format_prompt(code=code_solution)
      result = self.model.ainvoke(prompt)
      return {
-        'steps': result.steps
+        'steps': result.model_dump().get('steps')
      }
    
 if __name__ == "__main__": 
