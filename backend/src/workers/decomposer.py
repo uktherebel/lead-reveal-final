@@ -29,12 +29,18 @@ class Decompose(BaseWorker):
       
       self.model = self.llm.with_structured_output(StepsSchema)
 
+
   async def process(self, code_solution: str):
      prompt = decomposition_prompt.format_prompt(code=code_solution)
      result = self.model.ainvoke(prompt)
      return {
         'steps': result.model_dump().get('steps')
      }
-   
+  
+  def process_sync(self, code_solution: str) -> dict:
+      import asyncio
+      return asyncio.run(self.process(code_solution))   
+  
+
 if __name__ == "__main__": 
   pass 

@@ -111,6 +111,10 @@ class CodeWorker(BaseWorker):
             'difficulty': difficulty
         })
         return response.content
+    
+    def process_sync(self, input_data: dict) -> dict:
+        import asyncio
+        return asyncio.run(self.process(input_data))
 
     def _generate_test_cases(self, task: str) -> List[Dict[str, Any]]:
         """

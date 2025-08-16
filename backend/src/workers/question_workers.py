@@ -35,7 +35,8 @@ class BaseQuestionWorker(BaseWorker):
                         code_snippet: str,
                         concept: str, 
                         explanation: str, 
-                        n: int) -> Dict[str, Any]:
+                        n: int, 
+                        level: int) -> Dict[str, Any]:
         """Generate a question at this cognitive load level"""
         
         try:
@@ -55,8 +56,8 @@ class BaseQuestionWorker(BaseWorker):
                 'success': True, 
                 'questions': [q.model_dump() for q in response.items]
             }
-        except: 
-            return await self.handle_error({"step_number": step_number, "level": level}) 
+        except Exception as e:
+            return {"success": False, "error": str(e)} 
 
         
 class CognitiveLoad1Worker(BaseQuestionWorker):  
