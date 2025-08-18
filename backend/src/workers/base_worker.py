@@ -4,7 +4,7 @@ import asyncio
 import logging
 from langchain_openai import ChatOpenAI
 from langchain_ollama import ChatOllama
-from backend.core.config import get_settings
+from core.config import get_settings
 
 logger = logging.getLogger(__name__)
 

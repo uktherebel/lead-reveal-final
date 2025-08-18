@@ -1,11 +1,16 @@
 import logging
-import sys
-import os
-from typing import Dict, Any
 from datetime import datetime
-from state.schemas import LearningState, LearningPhase
-from backend.src.workers.coder import CodeWorker
-from workers.decomposer import Decompose
+from typing import Dict, Any
+from src.state.schemas import LearningState, LearningPhase
+from src.workers.coder import CodeWorker
+from src.workers.decomposer import Decompose
+from src.workers.question_workers import (
+    CognitiveLoad1Worker, 
+    CognitiveLoad2Worker, 
+    CognitiveLoad3Worker, 
+    CognitiveLoad4Worker, 
+    CognitiveLoad5Worker,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +95,7 @@ async def decompose_code_node(state: LearningState) -> Dict[str, Any]:
         steps = result.get('steps', [])
 
         # Calculate cognitive load distribution
-        cognitive_loads = [step.get('cognitive_load', 3) for step in steps.model_dump().get('steps')]
+        cognitive_loads = [step.get('cognitive_load', 3) for step in steps]
         avg_load = sum(cognitive_loads) / len(cognitive_loads) if cognitive_loads else 3
 
         return {
@@ -125,4 +130,31 @@ async def decompose_code_node(state: LearningState) -> Dict[str, Any]:
                 'timestamp': datetime.now().isoformat()
             }]
         }
+
+async def question_generator_node(state: LearningState) -> Dict[str, Any]:
+    """
+    Generate questions for each decomposed step 
+    """
+    logger.info("Generating questions for the code...")
+
+    code = state.get('validated_code') or state.get('code_solution')
+    steps = state.get('steps')
+
+    if not code:
+        return {
+            'error': 'No code to decompose',
+            'messages': state['messages'] + [{
+                'type': 'error',
+                'content': 'No validated code available',
+                'timestamp': datetime.now().isoformat()
+            }]
+        }
+    
+    questions = {}
+
+    try: 
+        for step in steps: 
+            pass
+    except: 
+        pass 
 

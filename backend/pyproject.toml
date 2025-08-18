@@ -12,7 +12,7 @@ requires-python = ">=3.8"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["src*"]
+include = ["src*", "core*", "services*", "validation*", "utils*"]
 
 [tool.setuptools.package-dir]
 "" = "."

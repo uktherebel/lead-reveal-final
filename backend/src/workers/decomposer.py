@@ -1,12 +1,12 @@
-from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
-from dotenv import load_dotenv
-from typing import List, Dict, Any 
-from src.prompts.decomposition_prompt import decomposition_prompt
-from base_worker import BaseWorker
-from prompts.decomposition_prompt import decomposition_prompt
-from pydantic import Field, BaseModel
-from state.schemas import LearningState, LearningPhase, StepDetail
 import logging
+from typing import List
+
+from dotenv import load_dotenv
+from pydantic import Field, BaseModel
+
+from src.prompts.decomposition_prompt import decomposition_prompt
+from src.state.schemas import StepDetail
+from src.workers.base_worker import BaseWorker
 
 logger = logging.getLogger(__name__)
 
@@ -27,12 +27,12 @@ class Decompose(BaseWorker):
          
          )
       
-      self.model = self.llm.with_structured_output(StepsSchema)
+      self.model = self.llm.with_structured_output(StepsSchema, method="function_calling")
 
 
   async def process(self, code_solution: str):
      prompt = decomposition_prompt.format_prompt(code=code_solution)
-     result = self.model.ainvoke(prompt)
+     result = await self.model.ainvoke(prompt)
      return {
         'steps': result.model_dump().get('steps')
      }

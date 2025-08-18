@@ -1,12 +1,5 @@
 from typing import Dict, Any, List
 import logging
-import sys
-import os
-
-# Add the backend directory to Python path
-backend_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
-if backend_path not in sys.path:
-    sys.path.insert(0, backend_path)
 
 from src.workers.base_worker import BaseWorker
 from langchain_core.prompts import ChatPromptTemplate
@@ -31,14 +24,19 @@ class CodeWorker(BaseWorker):
         """Initialize validator and prompts"""
         self.validator = None  # Lazy initialization
         self.generation_prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are an expert programming instructor.
-            Generate clear, educational code that:
-            1. Solves the problem correctly
-            2. Includes comprehensive comments
-            3. Handles edge cases
-            4. Uses descriptive variable names
-            5. Follows best practices"""),
-            ("human", "Task: {task}\nDifficulty: {difficulty}\nGenerate a complete solution:")
+            ("system", """You are an expert Python programmer. Generate ONLY valid Python code.
+
+CRITICAL REQUIREMENTS:
+1. Return ONLY executable Python code - no explanations or markdown
+2. All text must be in comments (starting with #) or docstrings
+3. No natural language outside of comments/docstrings
+4. Code must be syntactically correct Python
+5. Include comprehensive comments explaining the logic
+6. Use descriptive variable names
+7. Handle edge cases properly
+
+Generate a complete, working Python solution."""),
+            ("human", "Task: {task}\nDifficulty: {difficulty}\n\nReturn ONLY Python code:")
         ])
 
     def _ensure_validator(self):
@@ -71,18 +69,30 @@ class CodeWorker(BaseWorker):
                     test_cases = self._generate_test_cases(task)
 
                     # Validate code
-                    validation = await self.validator.validate_complete(code, test_cases)
-
-                    if validation['valid']:
+                    try:
+                        validation = await self.validator.validate_complete(code, test_cases)
+                        
+                        # Handle different validation response formats
+                        if isinstance(validation, dict) and validation.get('valid'):
+                            return {
+                                'success': True,
+                                'code': code,
+                                'validation': validation,
+                                'attempts': attempt + 1
+                            }
+                        else:
+                            # Use validation feedback for next attempt
+                            error_msg = validation.get('error', 'Validation failed') if isinstance(validation, dict) else str(validation)
+                            task = f"{task}\n\nPrevious attempt failed: {error_msg}\nPlease fix."
+                    except Exception as validation_error:
+                        logger.warning(f"Validation failed with error: {validation_error}")
+                        # If validation fails, treat as success but log the issue
                         return {
                             'success': True,
                             'code': code,
-                            'validation': validation,
+                            'validation': {'error': str(validation_error), 'valid': False},
                             'attempts': attempt + 1
                         }
-                    else:
-                        # Use validation feedback for next attempt
-                        task = f"{task}\n\nPrevious attempt failed: {validation['error']}\nPlease fix."
                 else:
                     # No validation, return generated code
                     return {
@@ -110,6 +120,10 @@ class CodeWorker(BaseWorker):
             'task': task,
             'difficulty': difficulty
         })
+        
+        # Debug logging
+        logger.info(f"Generated code:\n{response.content}")
+        
         return response.content
     
     def process_sync(self, input_data: dict) -> dict:

@@ -10,7 +10,7 @@ os.environ["LANGCHAIN_DEBUG"] = "false"
 import langchain
 langchain.debug = False
 
-from simple_graph import create_enhanced_graph
+from src.graphs.simple_graph import create_enhanced_graph
 from src.state.schemas import create_initial_state 
 
 logging.basicConfig(

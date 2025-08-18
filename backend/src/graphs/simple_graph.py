@@ -1,17 +1,9 @@
-import sys
-import os
-
-# Add the backend directory to Python path
-backend_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
-if backend_path not in sys.path:
-    sys.path.insert(0, backend_path)
-
 from langgraph.graph import StateGraph, END, START
 from src.state.schemas import LearningState
-from nodes import (
+from src.graphs.nodes import (
     generate_code_node,
     decompose_code_node)
-from edges import (
+from src.graphs.edges import (
     should_continue_after_generation,
     should_continue_after_decomposition
 )

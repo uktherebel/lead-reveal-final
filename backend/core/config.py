@@ -1,6 +1,6 @@
 import os
 from typing import Optional, Dict, Any
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 from functools import lru_cache
 from dotenv import load_dotenv
@@ -11,16 +11,24 @@ class Settings(BaseSettings):
     # API Keys
     openai_api_key: Optional[str] = Field(None, env="OPENAI_API_KEY")
     qwen_api_key: Optional[str] = Field(None, env="QWEN_API_KEY")
-    e2b_api_key: str = Field(..., env="E2B_API_KEY")  
+    e2b_api_key: Optional[str] = Field(None, env="E2B_API_KEY")
 
     # Server Configuration
     host: str = "0.0.0.0"
     port: int = 8000
     debug: bool = Field(False, env="DEBUG")
+    
+    @field_validator('debug', mode='before')
+    @classmethod
+    def parse_debug(cls, v):
+        """Convert string values to boolean for debug field"""
+        if isinstance(v, str):
+            return v.lower() in ('true', '1', 'yes', 'on')
+        return bool(v) if v is not None else False
 
     # LLM Settings
     llm_provider: str = Field("openai", env="LLM_PROVIDER")  # "openai" or "ollama"
-    llm_model: str = Field("gpt-4", env="LLM_MODEL")
+    llm_model: str = Field("gpt-4o-mini", env="LLM_MODEL")  # gpt-4o-mini supports structured outputs
     llm_temperature: float = 0.3
 
     # Sandboxing Configuration
@@ -36,6 +44,14 @@ class Settings(BaseSettings):
     enable_orchestration: bool = False
     enable_analytics: bool = False
     enable_time_travel: bool = False
+    
+    @field_validator('enable_sandboxing', 'enable_orchestration', 'enable_analytics', 'enable_time_travel', mode='before')
+    @classmethod
+    def parse_boolean_flags(cls, v):
+        """Convert string values to boolean for feature flags"""
+        if isinstance(v, str):
+            return v.lower() in ('true', '1', 'yes', 'on')
+        return bool(v) if v is not None else False
 
     class Config:
         env_file = ".env"

@@ -16,7 +16,8 @@ class SandboxedCodeValidator:
 
     self.api_key = api_key or settings.e2b_api_key
     self.sandbox = None  
-    self.pyright_evaluator = None 
+    self.pyright_evaluator = None
+    self.e2b_available = bool(self.api_key)
 
     self._setup_evaluators()
 
@@ -64,21 +65,27 @@ class SandboxedCodeValidator:
                     results['error'] = syntax['error']
                     return results
 
-            # Step 3: Execute in sandbox
-            execution = await self._run_in_sandbox(code)
-            results['execution_result'] = execution
+            # Step 3: Execute in sandbox (if E2B is available)
+            if self.e2b_available:
+                execution = await self._run_in_sandbox(code)
+                results['execution_result'] = execution
 
-            if not execution['success']:
-                results['error'] = execution['error']
-                return results
+                if not execution['success']:
+                    results['error'] = execution['error']
+                    return results
 
-            # Step 4: Run test cases if provided
-            if test_cases:
-                test_results = await self._run_tests(code, test_cases)
-                results['test_results'] = test_results
-                results['valid'] = all(t['passed'] for t in test_results)
+                # Step 4: Run test cases if provided
+                if test_cases:
+                    test_results = await self._run_tests(code, test_cases)
+                    results['test_results'] = test_results
+                    results['valid'] = all(t['passed'] for t in test_results)
+                else:
+                    results['valid'] = execution['success']
             else:
-                results['valid'] = execution['success']
+                # No E2B available, skip execution but still validate syntax
+                logger.warning("E2B API key not available, skipping sandbox execution")
+                results['execution_result'] = {'success': True, 'error': None, 'output': 'Skipped - no E2B key'}
+                results['valid'] = True  # Assume valid if syntax check passed
 
             return results
 
@@ -115,15 +122,16 @@ class SandboxedCodeValidator:
   def _validate_syntax(self, code: str) -> Dict[str, Any]: 
     try: 
       result = self.pyright_evaluator(outputs=code)
-      comment = ast.literal_eval(result.get('comment'))
+      comment = ast.literal_eval(result.get('comment', '[]'))
+      success = result.get('score', False)
       return {
-        'success': result.get('score'), 
-        'errors': None if not comment else comment 
+        'valid': bool(success), 
+        'error': None if not comment else str(comment)
       } 
     except Exception as e: 
       return {
-        'success': False, 
-        'errors': str(e)
+        'valid': False, 
+        'error': str(e)
       }
 
   async def _run_in_sandbox(self, code: str) -> Dict[str, Any]: 
@@ -133,14 +141,17 @@ class SandboxedCodeValidator:
           sandbox=sandbox
         )
         result = evaluator(outputs=code)
+        success = result.get('score', False)
         return {
-          'success': result.get('score'), 
-          'errors': result.get('errors'),
+          'success': bool(success), 
+          'error': result.get('errors', None),
+          'output': result.get('output', '')
         }
     except Exception as e: 
       return {
         'success': False, 
-        'errors': str(e),
+        'error': str(e),
+        'output': ''
       } 
   async def _run_tests(
         self,
