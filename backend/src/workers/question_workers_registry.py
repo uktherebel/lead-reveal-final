@@ -1,4 +1,4 @@
-from workers.question_workers import (
+from src.workers.question_workers import (
     CognitiveLoad1Worker, CognitiveLoad2Worker, CognitiveLoad3Worker,
     CognitiveLoad4Worker, CognitiveLoad5Worker,
 )

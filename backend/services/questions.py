@@ -1,6 +1,6 @@
 import asyncio, uuid
 from typing import Dict, Any, List
-from workers.question_workers_registry import WORKERS
+from src.workers.question_workers_registry import WORKERS
 # A semaphore is a concurrency primitive that allows a limit on the number of threads that can acquire a lock protecting a critical section.
 SEM = asyncio.Semaphore(6)
 
