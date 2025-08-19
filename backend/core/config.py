@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     sandbox_max_memory: int = 512  # MB
     enable_sandboxing: bool = True
 
+    # Database Configuration
+    database_url: str = Field("postgresql+asyncpg://postgres:password@localhost:5433/learningdb", env="DATABASE_URL")
+    redis_url: Optional[str] = Field(None, env="REDIS_URL")
+
     # Session Management
     session_timeout: int = 3600  # 1 hour
     max_concurrent_sessions: int = 100
@@ -60,6 +64,8 @@ class Settings(BaseSettings):
 @lru_cache()
 def get_settings() -> Settings:
     return Settings()
+
+settings = get_settings()
 
 
 
