@@ -16,10 +16,10 @@ from src.workers.coder import CodeWorker
 from src.workers.decomposer import Decompose
 
 try:
-    from .qgen import compiled_qgen
+    from .questions_subgraph import compiled_step_graph as compiled_qgen
 except ImportError:
     # When running as script, use absolute import
-    from qgen import compiled_qgen
+    from questions_subgraph import compiled_step_graph as compiled_qgen
 
 # ---- App state for building assets
 class AppState(TypedDict):
@@ -119,6 +119,7 @@ Constraints:
 0 <= s.length <= 3 * 104
 s[i] is '(', or ')'.
 """
-    response = build_assets_app.invoke({
-  'task_description': task
-})
+    import asyncio
+    response = asyncio.run(build_assets_app.ainvoke({
+        'task_description': task
+    }))

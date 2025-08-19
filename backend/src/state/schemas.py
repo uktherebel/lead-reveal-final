@@ -20,6 +20,8 @@ class Question(BaseModel):
     correct_answer: Any = Field(..., description='The correct answer to the question')
     explanation: str = Field(..., description='Detailed explanation why this answer was chosen')
     cognitive_load: int = Field(..., description="Cognitive load 1-5, where 1=easy, 5=complex", ge=1, le=5)
+    hint: Optional[str] = None
+
 
     @field_validator('cognitive_load')
     @classmethod
@@ -91,6 +93,12 @@ class LearningState(TypedDict):
   analytics_data: Dict[str, Any]
   sandbox_results: List[Dict[str, Any]]
 
+  # Hints 
+  rolling_stats: Dict[str, Any]    
+  bandit: Optional[Dict[str, Any]] 
+  next_load_idx: Optional[int]    
+
+
 def create_initial_state(
         task: str, 
         technique: str, 
@@ -151,7 +159,12 @@ def create_initial_state(
         # Advanced
         'checkpoint_data': {},
         'analytics_data': {},
-        'sandbox_results': []
+        'sandbox_results': [],
+
+        # Hints 
+        'rolling_stats': {"acc": 0.50, "median_rt": 30.0, "hint_rate": 0.20, "reveal_rate": 0.00, "step_norm": 0.50},
+        'bandit': None,
+        "next_load_idx": None,
     }
    
 

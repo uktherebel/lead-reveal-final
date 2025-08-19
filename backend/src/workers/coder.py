@@ -1,6 +1,5 @@
 from typing import Dict, Any, List
 import logging
-
 from src.workers.base_worker import BaseWorker
 from langchain_core.prompts import ChatPromptTemplate
 
@@ -67,7 +66,15 @@ Generate a complete, working Python solution."""),
 
                     # Create test cases based on task
                     test_cases = self._generate_test_cases(task)
-
+                    if not test_cases or (
+                            len(test_cases) == 1 and test_cases[0].get("call") == "solution()"):
+                        return {
+                            "success": True,
+                            "code": code,
+                            "validated_code": code,
+                            "validation": {"skipped": True, "reason": "no specific tests"},
+                            "attempts": 1,
+                        }
                     # Validate code
                     try:
                         validation = await self.validator.validate_complete(code, test_cases)

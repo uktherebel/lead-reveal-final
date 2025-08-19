@@ -63,8 +63,8 @@ class BaseWorker(ABC):
     async def execute_with_retry(
         self,
         func,
-        max_retries: int = 3,
-        backoff: float = 1.0
+        max_retries: int = 2,  # Reduce retries
+        backoff: float = 0.5   # Reduce backoff time
     ):
         """
         Retry logic with exponential backoff.
