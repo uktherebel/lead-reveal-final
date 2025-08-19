@@ -2,7 +2,7 @@ import asyncio, uuid
 from typing import Dict, Any, List
 from src.workers.question_workers_registry import WORKERS
 # A semaphore is a concurrency primitive that allows a limit on the number of threads that can acquire a lock protecting a critical section.
-SEM = asyncio.Semaphore(6)
+SEM = asyncio.Semaphore(20)  # Back to working value
 
 async def gen_all_levels_for_step(step: Dict[str, Any], code: str,
                                   n_per_level=1, levels=(1,2,3,4,5)) -> Dict[str, Any]:
