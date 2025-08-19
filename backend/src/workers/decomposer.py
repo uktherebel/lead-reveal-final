@@ -17,13 +17,19 @@ class Decompose(BaseWorker):
       self.decomposition_prompt = decomposition_prompt
       logger.info("Decomposer initialised")
 
-      class Step(StepDetail):
-         questions: List[str] = Field(..., description='Set to []')
+      # Create a step schema without the questions field for decomposition
+      class Step(BaseModel):
+         step_number: int = Field(..., description='The number of the step, increment by 1')
+         code_snippet: str = Field(..., description='The exact code for this step')
+         explanation: str = Field(..., description="What does this step entail? What's the justification for having this step?")
+         concept: str = Field(..., description='What are the concepts involved for this particular step?')
+         reveal: bool = Field(default=False)
+         intrinsic_load: int = Field(default=3, ge=1, le=5)
 
       class StepsSchema(BaseModel): 
          steps: List[Step] = Field(
             ..., 
-            description="List of ordered steps; each step must include step_number, code, explanation, concept, cognitive_load, questions, reveal."
+            description="List of ordered steps; each step must include step_number, code_snippet, explanation, concept, intrinsic_load."
          
          )
       
@@ -31,7 +37,7 @@ class Decompose(BaseWorker):
 
 
   async def process(self, code_solution: str):
-     prompt = decomposition_prompt.format_prompt(code=code_solution)
+     prompt = self.decomposition_prompt.format_prompt(code=code_solution)
      result = await self.model.ainvoke(prompt)
      return {
         'steps': result.model_dump().get('steps')

@@ -60,7 +60,7 @@ Generate a complete, working Python solution."""),
                 logger.info(f"Generating code, attempt {attempt + 1}/{max_attempts}")
                 code = await self._generate_code(task, difficulty)
 
-                # Validate if sandboxing is enabled and available
+                # Always return success when sandboxing is not available
                 if self.settings.enable_sandboxing and SANDBOXING_AVAILABLE:
                     self._ensure_validator()
 
@@ -101,10 +101,12 @@ Generate a complete, working Python solution."""),
                             'attempts': attempt + 1
                         }
                 else:
-                    # No validation, return generated code
+                    # No validation available, return generated code as successful
+                    logger.info(f"Sandboxing disabled or unavailable, returning generated code")
                     return {
                         'success': True,
                         'code': code,
+                        'validated_code': code,
                         'validation': None,
                         'attempts': attempt + 1
                     }

@@ -5,7 +5,7 @@ from src.workers.question_workers_registry import WORKERS
 SEM = asyncio.Semaphore(20)  # Back to working value
 
 async def gen_all_levels_for_step(step: Dict[str, Any], code: str,
-                                  n_per_level=1, levels=(1,2,3,4,5)) -> Dict[str, Any]:
+                                  n_per_level=1, levels=(1,2,3,4,5), target_level=None) -> Dict[str, Any]:
     """
       Params: 
         - step: Takes in a single step 
@@ -29,8 +29,11 @@ async def gen_all_levels_for_step(step: Dict[str, Any], code: str,
             item.setdefault("id", str(uuid.uuid4()))
         return qs
 
+    # Use target_level if provided, otherwise use all levels
+    target_levels = [target_level] if target_level else levels
+    
     # this is telling python to run all coroutines at concurrently 
-    packs = await asyncio.gather(*[run(L) for L in levels], return_exceptions=True)
+    packs = await asyncio.gather(*[run(L) for L in target_levels], return_exceptions=True)
     merged: List[Dict[str, Any]] = []
     for p in packs:
         if isinstance(p, list): 
