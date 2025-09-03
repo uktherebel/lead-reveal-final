@@ -13,10 +13,9 @@ from services.cache import cache_set
 
 def choose_next_question(state: Dict[str, Any]) -> Dict[str, Any]:
     steps = state.get("steps", [])
-    i = state.get("current_step", 0)
-    if i >= len(steps): return {"completed": True}
-
-    step = steps[i]
+    if not steps:
+        return {"completed": True}
+    
     if not state.get("bandit"):
         state["bandit"] = LinTS(n_arms=5, d=6).to_dict()
 
@@ -24,15 +23,34 @@ def choose_next_question(state: Dict[str, Any]) -> Dict[str, Any]:
     arm = bandit.choose(context_x(state))   # 0..4
     load = arm + 1
 
-    qs = step.get("questions", [])
-    cand = next((q for q in qs if not q.get("answered") and q.get("cognitive_load")==load), None)
+    # Search across ALL steps for the desired cognitive load
+    cand = None
+    selected_step_idx = None
+    
+    # First try to find a question with the specific cognitive load
+    for step_idx, step in enumerate(steps):
+        qs = step.get("questions", [])
+        cand = next((q for q in qs if not q.get("answered") and q.get("cognitive_load")==load), None)
+        if cand:
+            selected_step_idx = step_idx
+            break
+    
+    # If no question found with specific load, find any unanswered question
     if not cand:
-        cand = next((q for q in qs if not q.get("answered")), None)
-        if not cand:
-            return {"current_step": i+1, "current_question": None}
+        for step_idx, step in enumerate(steps):
+            qs = step.get("questions", [])
+            cand = next((q for q in qs if not q.get("answered")), None)
+            if cand:
+                selected_step_idx = step_idx
+                break
+    
+    # If still no question found, all questions are completed
+    if not cand:
+        return {"completed": True}
 
+    selected_step = steps[selected_step_idx]
     cq = {
-        "step_number": step["step_number"],
+        "step_number": selected_step["step_number"],
         "question_id": cand.get("id"),
         "question": cand["question"],
         "options": cand.get("options", []),
@@ -40,6 +58,10 @@ def choose_next_question(state: Dict[str, Any]) -> Dict[str, Any]:
         "cognitive_load": cand.get("cognitive_load", 1),
         "hint": cand.get("hint"),
     }
+    
+    # Update current step to the step we found the question in
+    state["current_step"] = selected_step_idx
+    
     return {"current_question": cq, "next_load_idx": arm, "bandit": bandit.to_dict()}
 
 async def hint_node(state: Dict[str, Any]) -> Dict[str, Any]:

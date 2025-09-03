@@ -1,4 +1,3 @@
-# build_assets_graph.py
 import sys
 import os
 
@@ -17,11 +16,12 @@ from src.workers.decomposer import Decompose
 
 try:
     from .questions_subgraph import compiled_step_graph as compiled_qgen
-    from .batch_questions_subgraph import compiled_batch_graph as compiled_batch_qgen
 except ImportError:
     # When running as script, use absolute import
     from questions_subgraph import compiled_step_graph as compiled_qgen
-    from batch_questions_subgraph import compiled_batch_graph as compiled_batch_qgen
+
+# Import batch processing function directly
+from services.batch_questions import gen_questions_for_level_batch
 
 # ---- App state for building assets
 class AppState(TypedDict):
@@ -98,12 +98,17 @@ def map_levels(state: AppState):
     code = state.get("validated_code") or state.get("code_solution") or ""
     steps = state.get("steps", [])
     
+    print(f"Mapping {len(steps)} steps for batch question generation")
+    
     # Group steps by cognitive level
     grouped = group_steps_by_cognitive_level(steps)
+    
+    print(f"Grouped steps by intrinsic_load: {[(level, len(level_steps)) for level, level_steps in grouped.items()]}")
     
     # Create Send messages for each cognitive level
     sends = []
     for level, level_steps in grouped.items():
+        print(f"Creating batch for level {level} with {len(level_steps)} steps: {[s.get('step_number') for s in level_steps]}")
         sends.append(Send("batch_qgen", {
             "code": code,
             "steps_by_level": level_steps,
@@ -111,6 +116,7 @@ def map_levels(state: AppState):
             "n_per_level": 1
         }))
     
+    print(f"Created {len(sends)} batch sends")
     return sends
 
 def conditional_map(state: AppState):
@@ -119,6 +125,29 @@ def conditional_map(state: AppState):
         return map_levels(state)
     else:
         return map_steps(state)
+
+async def batch_qgen_node(state: AppState) -> Dict[str, Any]:
+    """Direct batch question generation node"""
+    print(f"Batch node received state with keys: {list(state.keys())}")
+    
+    # Extract data from the Send message
+    code = state.get("code", "")
+    steps_by_level = state.get("steps_by_level", [])
+    cognitive_level = state.get("cognitive_level", 3)
+    n_per_level = state.get("n_per_level", 1)
+    
+    print(f"Processing {len(steps_by_level)} steps at cognitive level {cognitive_level}")
+    
+    # Generate questions for this batch
+    updated_steps = await gen_questions_for_level_batch(
+        steps_by_level=steps_by_level,
+        code=code, 
+        cognitive_level=cognitive_level,
+        n_per_level=n_per_level
+    )
+    
+    # Return in format expected by reducer
+    return {"step_updates": updated_steps}
 
 def reduce_updates(state: AppState) -> Dict[str, Any]:
     by_num = {s["step_number"]: s for s in state.get("steps", [])}
@@ -131,7 +160,7 @@ g = StateGraph(AppState)
 g.add_node("codegen", codegen)
 g.add_node("decompose", decompose)
 g.add_node("qgen", compiled_qgen)  # Normal mode: per-step generation
-g.add_node("batch_qgen", compiled_batch_qgen)  # Quick mode: per-level batch generation
+g.add_node("batch_qgen", batch_qgen_node)  # Quick mode: per-level batch generation
 g.add_node("reduce", reduce_updates)
 
 g.add_edge(START, "codegen")
