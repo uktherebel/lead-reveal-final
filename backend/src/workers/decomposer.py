@@ -39,15 +39,14 @@ class Decompose(BaseWorker):
       self.model = self.llm.with_structured_output(StepsSchema, method="function_calling")
 
 
-  async def process(self, code_solution: str):
-     strategy = os.getenv("DECOMP_STRATEGY", "ts_llm").lower()
-     if strategy in ("ast_llm", "ts_llm"):
+  async def process(self, code_solution: str, programming_language: str = "python"):
+     strategy = os.getenv("DECOMP_STRATEGY", "ast_llm").lower()
+     
+     # AST+LLM approach only works for Python
+     if strategy == "ast_llm" and programming_language.lower() == "python":
          try:
-             if strategy == "ts_llm":
-                 from services.ts_slicing import build_steps_from_code
-             else:
-                 from services.ast_slicing import build_steps_from_code
-             skeleton = build_steps_from_code(code_solution)
+             from services.ast_slicing import build_steps_from_code
+             skeleton = build_steps_from_code(code_solution, programming_language)
              if skeleton:
                  refine_prompt = decomposition_refine_prompt.format_prompt(
                      code=code_solution,
@@ -58,7 +57,7 @@ class Decompose(BaseWorker):
          except Exception as e:
              logger.warning(f"AST+LLM failed, fallback to LLM-only: {e}")
 
-     # Fallback: original LLM-only decomposition
+     # Fallback: original LLM-only decomposition (for all languages)
      prompt = self.decomposition_prompt.format_prompt(code=code_solution)
      result = await self.model.ainvoke(prompt)
      return {'steps': result.model_dump().get('steps')}

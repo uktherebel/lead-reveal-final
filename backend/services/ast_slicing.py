@@ -28,6 +28,28 @@ def _concept_for(node: ast.AST) -> str:
     return "computation"
 
 
+def _is_docstring_expr(node: ast.AST) -> bool:
+    return isinstance(node, ast.Expr) and isinstance(getattr(node, "value", None), ast.Constant) and isinstance(node.value.value, str)
+
+
+def _is_main_guard(node: ast.AST) -> bool:
+    # if __name__ == "__main__": ...
+    if not isinstance(node, ast.If):
+        return False
+    try:
+        left = node.test.left  # type: ignore[attr-defined]
+        right = node.test.comparators[0]  # type: ignore[attr-defined]
+        return (
+            isinstance(node.test, ast.Compare)
+            and isinstance(left, ast.Name)
+            and left.id == "__name__"
+            and isinstance(right, ast.Constant)
+            and str(right.value) == "__main__"
+        )
+    except Exception:
+        return False
+
+
 def _is_io_call(call: ast.Call) -> bool:
     # Very small filter for IO/printing etc.
     def _name(n: ast.AST) -> str:
@@ -62,6 +84,9 @@ def _intrinsic_load(node: ast.AST, depth: int = 0) -> int:
 def _collect_units_from_body(body: List[ast.stmt]) -> List[ast.AST]:
     units: List[ast.AST] = []
     i = 0
+    # Skip docstring if present
+    if i < len(body) and _is_docstring_expr(body[i]):
+        i += 1
     # Merge leading simple assignments as initialization block
     init_start = None
     init_end = None
@@ -80,14 +105,22 @@ def _collect_units_from_body(body: List[ast.stmt]) -> List[ast.AST]:
     for node in body[i:]:
         if isinstance(node, ast.Expr) and isinstance(node.value, ast.Call) and _is_io_call(node.value):
             continue
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            continue
         units.append(node)
     return units
 
 
-def build_steps_from_code(source: str) -> List[Dict[str, Any]]:
-    """Very small AST-based slicer that outputs step skeletons.
+def build_steps_from_code(source: str, language: str = "python") -> List[Dict[str, Any]]:
+    """AST-based slicer for Python code only.
+    For non-Python languages, returns empty list (will fallback to LLM-only).
+    
     Returns: list of dicts with step_number, code_snippet, concept, intrinsic_load
     """
+    if language.lower() != "python":
+        # Only Python is supported by AST approach
+        return []
+    
     try:
         tree = ast.parse(source)
     except Exception:
@@ -119,7 +152,7 @@ def build_steps_from_code(source: str) -> List[Dict[str, Any]]:
             )
             step_no += 1
 
-            # 2) Function body units
+            # 2) Function body units (skip docstring handled in collector)
             for node in _collect_units_from_body(fn.body):
                 start = getattr(node, "lineno", None)
                 end = _get_end_lineno(node)
@@ -141,6 +174,8 @@ def build_steps_from_code(source: str) -> List[Dict[str, Any]]:
                 step_no += 1
     else:
         for node in _collect_units_from_body(modules):
+            if _is_main_guard(node):
+                continue
             start = getattr(node, "lineno", None)
             end = _get_end_lineno(node)
             if start is None or end is None:
