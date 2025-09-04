@@ -219,6 +219,24 @@ Generate a complete, working {config['name']} solution."""),
                 {'call': 'sort_list([])', 'expected': '[]'},
                 {'call': 'sort_list([1])', 'expected': '[1]'}
             ]
+        elif 'bfs' in task_lower or ('breadth' in task_lower and 'first' in task_lower):
+            test_cases = [
+                {'call': 'bfs(graph, 0)', 'expected': 'distances_dict'},
+                {'call': 'bfs(empty_graph, 0)', 'expected': '{}'},
+                {'call': 'bfs(single_node_graph, 0)', 'expected': '{0: 0}'}
+            ]
+        elif 'dfs' in task_lower or ('depth' in task_lower and 'first' in task_lower):
+            test_cases = [
+                {'call': 'dfs(graph, 0)', 'expected': 'visited_nodes'},
+                {'call': 'dfs(empty_graph, 0)', 'expected': '[]'},
+                {'call': 'dfs(single_node_graph, 0)', 'expected': '[0]'}
+            ]
+        elif 'graph' in task_lower and ('distance' in task_lower or 'level' in task_lower):
+            test_cases = [
+                {'call': 'find_distances(graph, 0)', 'expected': 'distance_map'},
+                {'call': 'find_distances(small_graph, 0)', 'expected': '{0: 0, 1: 1}'},
+                {'call': 'find_distances(disconnected_graph, 0)', 'expected': 'partial_distances'}
+            ]
         else:
             # Generic test case
             logger.warning(f"No specific test cases for task: {task}")

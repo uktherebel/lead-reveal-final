@@ -5,9 +5,7 @@ decomposition_prompt = ChatPromptTemplate.from_template(
 
         ## Goals
         - Produce logical steps that build understanding progressively.
-        - Focus ONLY on the core algorithm logic - ignore boilerplate code.
         - Each step should represent a complete logical concept or algorithm phase.
-        - Group related lines of code together - don't create separate steps for individual lines.
         - Each step describes *what changes* and *why* (concept + reasoning), not just "what the code does".
 
         ## Constraints (very important)

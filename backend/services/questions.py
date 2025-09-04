@@ -8,15 +8,9 @@ _semaphore = None
 def get_semaphore():
     """Get or create semaphore for current event loop"""
     global _semaphore
-    try:
-        # Try to use existing semaphore
-        if _semaphore is not None:
-            return _semaphore
-    except RuntimeError:
-        # Semaphore bound to different event loop, create new one
-        pass
     
-    # Create new semaphore for current event loop
+    # Always create a new semaphore to avoid event loop binding issues
+    # This ensures each async context gets a fresh semaphore
     _semaphore = asyncio.Semaphore(20)
     return _semaphore
 
