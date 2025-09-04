@@ -30,63 +30,35 @@ class CodeWorker(BaseWorker):
             self.validator = SandboxedCodeValidator()
 
     def _get_language_prompt(self, language: str) -> ChatPromptTemplate:
-        """Get language-specific code generation prompt"""
-        language_configs = {
-            'python': {
-                'name': 'Python',
-                'expert': 'expert Python programmer',
-                'comment_style': '# ',
-                'file_ext': '.py'
-            },
-            'cpp': {
-                'name': 'C++',
-                'expert': 'expert C++ programmer',
-                'comment_style': '// ',
-                'file_ext': '.cpp'
-            },
-            'java': {
-                'name': 'Java',
-                'expert': 'expert Java programmer',
-                'comment_style': '// ',
-                'file_ext': '.java'
-            },
-            'javascript': {
-                'name': 'JavaScript',
-                'expert': 'expert JavaScript programmer',
-                'comment_style': '// ',
-                'file_ext': '.js'
-            },
-            'c#': {
-                'name': 'C#',
-                'expert': 'expert C# programmer',
-                'comment_style': '// ',
-                'file_ext': '.cs'
-            },
-            'csharp': {
-                'name': 'C#',
-                'expert': 'expert C# programmer',
-                'comment_style': '// ',
-                'file_ext': '.cs'
-            }
-        }
+        """Generate language-agnostic code generation prompt"""
+        # AI can generate any language - no need for a registry
+        language_name = language.title()
         
-        # Default to Python if language not supported
-        config = language_configs.get(language.lower(), language_configs['python'])
+        # Simple comment style detection
+        comment_style = {
+            'python': '# ',
+            'ruby': '# ',
+            'bash': '# ',
+            'shell': '# ',
+            'haskell': '-- ',
+            'sql': '-- ',
+            'lua': '-- '
+        }.get(language.lower(), '// ')  # Default to // for most languages
         
         return ChatPromptTemplate.from_messages([
-            ("system", f"""You are an {config['expert']}. Generate ONLY valid {config['name']} code.
+            ("system", f"""You are an expert {language_name} programmer. Generate ONLY valid {language_name} code.
 
 CRITICAL REQUIREMENTS:
-1. Return ONLY executable {config['name']} code - no explanations or markdown
-2. All text must be in comments (starting with {config['comment_style']}) or appropriate language documentation
+1. Return ONLY executable {language_name} code - no explanations or markdown
+2. All text must be in comments (starting with {comment_style}) or appropriate language documentation
 3. No natural language outside of comments/documentation
-4. Code must be syntactically correct {config['name']}
+4. Code must be syntactically correct {language_name}
 5. Include comprehensive comments explaining the logic
 6. Use descriptive variable names
 7. Handle edge cases properly
 
-Generate a complete, working {config['name']} solution."""),
-            ("human", f"Task: {{task}}\\nDifficulty: {{difficulty}}\\n\\nReturn ONLY {config['name']} code:")
+Generate a complete, working {language_name} solution."""),
+            ("human", f"Task: {{task}}\\nDifficulty: {{difficulty}}\\n\\nReturn ONLY {language_name} code:")
         ])
 
     async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -108,8 +80,9 @@ Generate a complete, working {config['name']} solution."""),
                 logger.info(f"Generating code, attempt {attempt + 1}/{max_attempts}")
                 code = await self._generate_code(task, difficulty, programming_language)
 
-                # Always return success when sandboxing is not available
-                if self.settings.enable_sandboxing and SANDBOXING_AVAILABLE:
+                # Only validate Python code (E2B sandbox only supports Python reliably)
+                if (self.settings.enable_sandboxing and SANDBOXING_AVAILABLE and 
+                    programming_language.lower() == 'python'):
                     self._ensure_validator()
 
                     # Create test cases based on task
