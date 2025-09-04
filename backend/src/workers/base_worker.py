@@ -3,7 +3,6 @@ from typing import Any, Dict, Optional
 import asyncio
 import logging
 from langchain_openai import ChatOpenAI
-from langchain_ollama import ChatOllama
 from core.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -16,18 +15,12 @@ class BaseWorker(ABC):
     def __init__(self):
         settings = get_settings()
 
-        # Initialise LLM based on configuration
-        if settings.llm_provider == "openai":
-            self.llm = ChatOpenAI(
-                model=settings.llm_model,
-                temperature=settings.llm_temperature,
-                api_key=settings.openai_api_key
-            )
-        else:
-            self.llm = ChatOllama(
-                model=settings.llm_model,
-                temperature=settings.llm_temperature
-            )
+        # Initialize OpenAI LLM
+        self.llm = ChatOpenAI(
+            model=settings.llm_model,
+            temperature=settings.llm_temperature,
+            api_key=settings.openai_api_key
+        )
 
         self.settings = settings
         self._setup()

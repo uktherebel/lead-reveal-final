@@ -27,7 +27,7 @@ class Settings(BaseSettings):
         return bool(v) if v is not None else False
 
     # LLM Settings
-    llm_provider: str = Field("openai", env="LLM_PROVIDER")  # "openai" or "ollama"
+    llm_provider: str = Field("openai", env="LLM_PROVIDER")
     llm_model: str = Field("gpt-4o-mini", env="LLM_MODEL")  # gpt-4o-mini supports structured outputs
     llm_temperature: float = 0.3
 

@@ -7,4 +7,4 @@ cd "$(dirname "$0")"
 pip install -r requirements.txt
 
 # Run the Streamlit app
-streamlit run streamlit_app.py --server.port 8501 --server.headless false
+streamlit run streamlit_app.py --server.port 8501 --server.headless false 

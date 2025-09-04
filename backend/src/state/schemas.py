@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, field_validator
 
 class LearningPhase(Enum):
     INITIALIZATION = "initialization"
+    LANGUAGE_DETECTION = "language_detection"
     CODE_GENERATION = "code_generation"
     VALIDATION = "validation"
     DECOMPOSITION = "decomposition"
@@ -53,6 +54,7 @@ class LearningState(TypedDict):
   task_description: str 
   technique: str
   difficulty_level: Literal['beginner', 'intermediate', 'advanced']
+  programming_language: str  # Detected from task description
 
   # Learning content
   code_solution: str
@@ -121,6 +123,7 @@ def create_initial_state(
         'task_description': task,
         'technique': technique,
         'difficulty_level': 'intermediate',
+        'programming_language': 'python',  # Default to Python
 
         # Content
         'code_solution': '',

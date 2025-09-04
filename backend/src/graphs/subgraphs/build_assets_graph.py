@@ -13,6 +13,7 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.types import Send
 from src.workers.coder import CodeWorker
 from src.workers.decomposer import Decompose
+from src.workers.language_detector import LanguageDetectionWorker
 
 try:
     from .questions_subgraph import compiled_step_graph as compiled_qgen
@@ -29,6 +30,7 @@ class AppState(TypedDict):
     task_description: str
     difficulty_level: Literal['beginner', 'intermediate', 'advanced']
     quick_mode: bool
+    programming_language: str  # Detected programming language
 
     # generated assets
     code_solution: str
@@ -39,6 +41,21 @@ class AppState(TypedDict):
     step_updates: Annotated[List[Dict[str, Any]], add]
 
 # ---- Nodes
+def detect_language(state: AppState) -> Dict[str, Any]:
+    """Detect programming language from task description"""
+    if state.get("programming_language"):
+        return {}  # Language already detected
+    
+    worker = LanguageDetectionWorker()
+    result = worker.process_sync({
+        "task_description": state["task_description"]
+    })
+    
+    detected_language = result.get("programming_language", "python")
+    print(f"Language detected: {detected_language}")
+    
+    return {"programming_language": detected_language}
+
 def codegen(state: AppState) -> Dict[str, Any]:
     if state.get("validated_code"):
         return {}
@@ -46,6 +63,7 @@ def codegen(state: AppState) -> Dict[str, Any]:
     out = worker.process_sync({
         "task_description": state["task_description"],
         "difficulty_level": state.get("difficulty_level", "intermediate"),
+        "programming_language": state.get("programming_language", "python"),
     })
     if not out or not out.get("success", True):
         # Log the error but try to continue with whatever code was generated
@@ -157,13 +175,15 @@ def reduce_updates(state: AppState) -> Dict[str, Any]:
     return {"steps": merged}
 
 g = StateGraph(AppState)
+g.add_node("detect_language", detect_language)  # Language detection first
 g.add_node("codegen", codegen)
 g.add_node("decompose", decompose)
 g.add_node("qgen", compiled_qgen)  # Normal mode: per-step generation
 g.add_node("batch_qgen", batch_qgen_node)  # Quick mode: per-level batch generation
 g.add_node("reduce", reduce_updates)
 
-g.add_edge(START, "codegen")
+g.add_edge(START, "detect_language")  # Start with language detection
+g.add_edge("detect_language", "codegen")
 g.add_edge("codegen", "decompose")
 g.add_conditional_edges("decompose", conditional_map)  # Choose based on quick_mode
 g.add_edge("qgen", "reduce")  # Both question generators feed into reducer

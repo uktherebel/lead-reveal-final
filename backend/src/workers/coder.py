@@ -22,25 +22,72 @@ class CodeWorker(BaseWorker):
     def _setup(self):
         """Initialize validator and prompts"""
         self.validator = None  # Lazy initialization
-        self.generation_prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are an expert Python programmer. Generate ONLY valid Python code.
-
-CRITICAL REQUIREMENTS:
-1. Return ONLY executable Python code - no explanations or markdown
-2. All text must be in comments (starting with #) or docstrings
-3. No natural language outside of comments/docstrings
-4. Code must be syntactically correct Python
-5. Include comprehensive comments explaining the logic
-6. Use descriptive variable names
-7. Handle edge cases properly
-
-Generate a complete, working Python solution."""),
-            ("human", "Task: {task}\nDifficulty: {difficulty}\n\nReturn ONLY Python code:")
-        ])
+        # Default to Python prompt, will be updated based on detected language
+        self.generation_prompt = self._get_language_prompt('python')
 
     def _ensure_validator(self):
         if self.validator is None and self.settings.enable_sandboxing and SANDBOXING_AVAILABLE:
             self.validator = SandboxedCodeValidator()
+
+    def _get_language_prompt(self, language: str) -> ChatPromptTemplate:
+        """Get language-specific code generation prompt"""
+        language_configs = {
+            'python': {
+                'name': 'Python',
+                'expert': 'expert Python programmer',
+                'comment_style': '# ',
+                'file_ext': '.py'
+            },
+            'cpp': {
+                'name': 'C++',
+                'expert': 'expert C++ programmer',
+                'comment_style': '// ',
+                'file_ext': '.cpp'
+            },
+            'java': {
+                'name': 'Java',
+                'expert': 'expert Java programmer',
+                'comment_style': '// ',
+                'file_ext': '.java'
+            },
+            'javascript': {
+                'name': 'JavaScript',
+                'expert': 'expert JavaScript programmer',
+                'comment_style': '// ',
+                'file_ext': '.js'
+            },
+            'c#': {
+                'name': 'C#',
+                'expert': 'expert C# programmer',
+                'comment_style': '// ',
+                'file_ext': '.cs'
+            },
+            'csharp': {
+                'name': 'C#',
+                'expert': 'expert C# programmer',
+                'comment_style': '// ',
+                'file_ext': '.cs'
+            }
+        }
+        
+        # Default to Python if language not supported
+        config = language_configs.get(language.lower(), language_configs['python'])
+        
+        return ChatPromptTemplate.from_messages([
+            ("system", f"""You are an {config['expert']}. Generate ONLY valid {config['name']} code.
+
+CRITICAL REQUIREMENTS:
+1. Return ONLY executable {config['name']} code - no explanations or markdown
+2. All text must be in comments (starting with {config['comment_style']}) or appropriate language documentation
+3. No natural language outside of comments/documentation
+4. Code must be syntactically correct {config['name']}
+5. Include comprehensive comments explaining the logic
+6. Use descriptive variable names
+7. Handle edge cases properly
+
+Generate a complete, working {config['name']} solution."""),
+            ("human", f"Task: {{task}}\\nDifficulty: {{difficulty}}\\n\\nReturn ONLY {config['name']} code:")
+        ])
 
     async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -53,12 +100,13 @@ Generate a complete, working Python solution."""),
         task = input_data.get('task_description')
         difficulty = input_data.get('difficulty_level', 'intermediate')
         max_attempts = input_data.get('max_attempts', 3)
+        programming_language = input_data.get('programming_language', 'python').lower()
 
         for attempt in range(max_attempts):
             try:
                 # Generate code
                 logger.info(f"Generating code, attempt {attempt + 1}/{max_attempts}")
-                code = await self._generate_code(task, difficulty)
+                code = await self._generate_code(task, difficulty, programming_language)
 
                 # Always return success when sandboxing is not available
                 if self.settings.enable_sandboxing and SANDBOXING_AVAILABLE:
@@ -122,16 +170,18 @@ Generate a complete, working Python solution."""),
             'attempts': max_attempts
         }
 
-    async def _generate_code(self, task: str, difficulty: str) -> str:
+    async def _generate_code(self, task: str, difficulty: str, language: str = 'python') -> str:
         """Generate code using LLM"""
-        chain = self.generation_prompt | self.llm
+        # Get language-specific prompt
+        generation_prompt = self._get_language_prompt(language)
+        chain = generation_prompt | self.llm
         response = await chain.ainvoke({
             'task': task,
             'difficulty': difficulty
         })
         
         # Debug logging
-        logger.info(f"Generated code:\n{response.content}")
+        logger.info(f"Generated {language} code:\n{response.content}")
         
         return response.content
     

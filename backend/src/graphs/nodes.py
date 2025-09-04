@@ -4,6 +4,7 @@ from typing import Dict, Any
 from src.state.schemas import LearningState, LearningPhase
 from src.workers.coder import CodeWorker
 from src.workers.decomposer import Decompose
+from src.workers.language_detector import LanguageDetectionWorker
 from src.workers.question_workers import (
     CognitiveLoad1Worker, 
     CognitiveLoad2Worker, 
@@ -13,6 +14,61 @@ from src.workers.question_workers import (
 )
 
 logger = logging.getLogger(__name__)
+
+async def detect_language_node(state: LearningState) -> Dict[str, Any]:
+    """
+    Detect programming language from task description using LLM.
+    """
+    logger.info(f"Detecting programming language for task: {state['task_description'][:100]}...")
+    
+    try:
+        worker = LanguageDetectionWorker()
+        result = await worker.process({
+            'task_description': state['task_description']
+        })
+        
+        if result['success']:
+            detected_language = result['programming_language']
+            logger.info(f"Language detected: {detected_language}")
+            
+            return {
+                'programming_language': detected_language,
+                'current_phase': LearningPhase.LANGUAGE_DETECTION,
+                'messages': state['messages'] + [{
+                    'type': 'language_detected',
+                    'content': f'Programming language detected: {detected_language.title()}',
+                    'timestamp': datetime.now().isoformat(),
+                    'language': detected_language
+                }],
+                'updated_at': datetime.now().isoformat()
+            }
+        else:
+            logger.warning(f"Language detection failed: {result.get('error')}")
+            return {
+                'programming_language': 'python',  # Default fallback
+                'current_phase': LearningPhase.LANGUAGE_DETECTION,
+                'messages': state['messages'] + [{
+                    'type': 'language_detection_failed',
+                    'content': f'Language detection failed, defaulting to Python: {result.get("error")}',
+                    'timestamp': datetime.now().isoformat(),
+                    'language': 'python'
+                }],
+                'updated_at': datetime.now().isoformat()
+            }
+            
+    except Exception as e:
+        logger.error(f"Language detection node error: {e}")
+        return {
+            'programming_language': 'python',  # Default fallback
+            'error': str(e),
+            'current_phase': LearningPhase.LANGUAGE_DETECTION,
+            'messages': state['messages'] + [{
+                'type': 'error',
+                'content': f'Language detection error: {str(e)}',
+                'timestamp': datetime.now().isoformat()
+            }],
+            'updated_at': datetime.now().isoformat()
+        }
 
 async def generate_code_node(state: LearningState) -> Dict[str, Any]:
     """

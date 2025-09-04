@@ -34,7 +34,8 @@ class SandboxedCodeValidator:
   async def validate_complete(
         self,
         code: str,
-        test_cases: List[Dict[str, Any]] = None
+        test_cases: List[Dict[str, Any]] = None,
+        extract_embedded_tests: bool = True
     ) -> Dict[str, Any]:
         """
         Complete validation pipeline.
@@ -65,22 +66,37 @@ class SandboxedCodeValidator:
                     results['error'] = syntax['error']
                     return results
 
-            # Step 3: Execute in sandbox (if E2B is available)
+            # Step 3: Extract embedded test cases if enabled
+            extracted_tests = []
+            if extract_embedded_tests and not test_cases:
+                extracted_tests = self._extract_embedded_tests(code)
+                if extracted_tests:
+                    logger.info(f"Extracted {len(extracted_tests)} embedded test cases")
+
+            # Step 4: Execute in sandbox (if E2B is available) 
             if self.e2b_available:
-                execution = await self._run_in_sandbox(code)
-                results['execution_result'] = execution
-
-                if not execution['success']:
-                    results['error'] = execution['error']
-                    return results
-
-                # Step 4: Run test cases if provided
-                if test_cases:
-                    test_results = await self._run_tests(code, test_cases)
-                    results['test_results'] = test_results
-                    results['valid'] = all(t['passed'] for t in test_results)
+                # If we have embedded tests, run the code directly (includes test execution)
+                if extracted_tests:
+                    execution = await self._run_embedded_tests(code)
+                    results['execution_result'] = execution
+                    results['test_results'] = execution.get('test_results', [])
+                    results['valid'] = execution.get('success', False) and execution.get('all_tests_passed', False)
                 else:
-                    results['valid'] = execution['success']
+                    # No embedded tests, run normal execution
+                    execution = await self._run_in_sandbox(code)
+                    results['execution_result'] = execution
+                    
+                    if not execution['success']:
+                        results['error'] = execution['error']
+                        return results
+
+                    # Step 5: Run external test cases if provided
+                    if test_cases:
+                        test_results = await self._run_tests(code, test_cases)
+                        results['test_results'] = test_results
+                        results['valid'] = all(t['passed'] for t in test_results)
+                    else:
+                        results['valid'] = execution['success']
             else:
                 # No E2B available, skip execution but still validate syntax
                 logger.warning("E2B API key not available, skipping sandbox execution")
@@ -189,6 +205,66 @@ class SandboxedCodeValidator:
             })
 
         return results  
+
+  def _extract_embedded_tests(self, code: str) -> List[str]:
+    """Extract embedded test cases from generated code"""
+    import re
+    
+    # Look for the test cases section
+    test_section_pattern = r'# Test cases.*?if __name__ == "__main__":(.*?)(?=\n\S|\nif |\n#|\Z)'
+    match = re.search(test_section_pattern, code, re.DOTALL | re.MULTILINE)
+    
+    if not match:
+        return []
+    
+    test_section = match.group(1)
+    # Extract individual assert statements
+    assert_pattern = r'assert\s+([^,]+),?\s*"([^"]*)"?'
+    assertions = re.findall(assert_pattern, test_section)
+    
+    return [assertion[0].strip() for assertion in assertions]
+
+  async def _run_embedded_tests(self, code: str) -> Dict[str, Any]:
+    """Run code with embedded test cases"""
+    try:
+      with Sandbox('OpenEvalsPython') as sandbox: 
+        # Execute the code (which includes the test cases)
+        result = sandbox.execute(code)
+        
+        # Check if tests passed (look for "All tests passed!" or no assertion errors)
+        success = result.error is None and ("All tests passed!" in result.output or "AssertionError" not in result.output)
+        
+        # Count assertions as test results
+        import re
+        assertions = re.findall(r'assert\s+([^,]+)', code)
+        test_results = []
+        
+        for i, assertion in enumerate(assertions, 1):
+            # Since we don't get individual test results from sandbox,
+            # we assume all tests passed if there's no AssertionError
+            passed = "AssertionError" not in result.output
+            test_results.append({
+                'test_number': i,
+                'assertion': assertion,
+                'passed': passed,
+                'error': None if passed else "Assertion failed"
+            })
+        
+        return {
+          'success': success,
+          'all_tests_passed': success,
+          'error': result.error if result.error else None,
+          'output': result.output,
+          'test_results': test_results
+        }
+    except Exception as e: 
+      return {
+        'success': False,
+        'all_tests_passed': False,
+        'error': str(e),
+        'output': '',
+        'test_results': []
+      }
 
 
 

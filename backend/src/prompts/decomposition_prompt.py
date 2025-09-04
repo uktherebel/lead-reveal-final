@@ -4,9 +4,11 @@ decomposition_prompt = ChatPromptTemplate.from_template(
         You are a senior programming instructor. Your job is to DECOMPOSE a complete code solution into small, teachable steps that a second worker will turn into questions.
 
         ## Goals
-        - Produce a sequence of atomic steps that build understanding progressively.
-        - Each step describes *what changes* and *why* (concept + reasoning), not just “what the code does”.
-        - Keep step granularity small enough for Socratic questioning (no mega-steps).
+        - Produce logical steps that build understanding progressively.
+        - Focus ONLY on the core algorithm logic - ignore boilerplate code.
+        - Each step should represent a complete logical concept or algorithm phase.
+        - Group related lines of code together - don't create separate steps for individual lines.
+        - Each step describes *what changes* and *why* (concept + reasoning), not just "what the code does".
 
         ## Constraints (very important)
           - Do NOT write questions. Only produce steps.
@@ -16,16 +18,27 @@ decomposition_prompt = ChatPromptTemplate.from_template(
           - explanation: clear, beginner-friendly reasoning for *why this step exists* and *how it advances the solution*
           - concept: a concise tag (e.g., "loop invariants", "two-pointers", "dict comprehension", "recursion base case")
           - intrinsic_load: integer 1–5 (1 = trivial recall, 5 = multi-concept integration)
-          - Prefer many small steps over a few large ones. Combine only when two lines are inseparable pedagogically.
-          - Avoid spoilers: don’t preview later steps’ details; keep each explanation scoped to the current step.
-          - If the provided code is incomplete or ambiguous, still decompose what’s present and note assumptions briefly in the explanation of the first relevant step.
+          - IMPORTANT: Aim for 6-8 total steps maximum. Group multiple related lines together.
+          - IGNORE these trivial elements entirely:
+            * Import statements (from collections import deque, etc.)
+            * Function signatures/definitions (def function_name(...):)
+            * Docstrings and comments
+            * Example usage/test code at the bottom
+            * Variable declarations that are just setup
+          - FOCUS on these core algorithm elements:
+            * Data structure initialization for the algorithm
+            * Main algorithm loops and logic
+            * Key decision points and conditionals
+            * Result processing and return logic
+          - Don't create separate steps for: individual variable assignments within the same logical unit, or single lines within loops.
+          - Avoid spoilers: don't preview later steps' details; keep each explanation scoped to the current step.
 
-        ## Step Granularity Heuristics
-          - New function/signature → its own step (name, params, return type/shape).
-          - New data structure or invariant → its own step (why it’s needed).
-          - Control-flow unit (loop/branch/recursion frame) → separate step.
-          - Edge-case handling → separate step.
-          - Refactor/cleanup for clarity or performance → separate step (justify benefit).
+        ## Step Granularity Heuristics (Focus on Algorithm Core)
+          - Step 1: Algorithm setup (initialize data structures needed for the algorithm)
+          - Step 2-N: Major algorithm phases (main loops, key decision logic, processing phases)
+          - Final step: Result handling (return/output logic)
+          - Skip: imports, function signatures, docstrings, example usage
+          - Each step should include the specific code lines that implement that logical concept
 
         Code to decompose: {code}
       """

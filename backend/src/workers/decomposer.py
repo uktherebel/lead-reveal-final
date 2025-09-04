@@ -1,10 +1,13 @@
 import logging
+import os
+import json
 from typing import List
 
 from dotenv import load_dotenv
 from pydantic import Field, BaseModel
 
 from src.prompts.decomposition_prompt import decomposition_prompt
+from src.prompts.decomposition_refine_prompt import decomposition_refine_prompt
 from src.state.schemas import StepDetail
 from src.workers.base_worker import BaseWorker
 
@@ -37,11 +40,25 @@ class Decompose(BaseWorker):
 
 
   async def process(self, code_solution: str):
+     strategy = os.getenv("DECOMP_STRATEGY", "ast_llm").lower()
+     if strategy == "ast_llm":
+         try:
+             from services.ast_slicing import build_steps_from_code
+             skeleton = build_steps_from_code(code_solution)
+             if skeleton:
+                 refine_prompt = decomposition_refine_prompt.format_prompt(
+                     code=code_solution,
+                     steps_json=json.dumps(skeleton, ensure_ascii=False)
+                 )
+                 result = await self.model.ainvoke(refine_prompt)
+                 return {'steps': result.model_dump().get('steps')}
+         except Exception as e:
+             logger.warning(f"AST+LLM failed, fallback to LLM-only: {e}")
+
+     # Fallback: original LLM-only decomposition
      prompt = self.decomposition_prompt.format_prompt(code=code_solution)
      result = await self.model.ainvoke(prompt)
-     return {
-        'steps': result.model_dump().get('steps')
-     }
+     return {'steps': result.model_dump().get('steps')}
   
   def process_sync(self, code_solution: str) -> dict:
       import asyncio
