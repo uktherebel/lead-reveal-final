@@ -40,10 +40,13 @@ class Decompose(BaseWorker):
 
 
   async def process(self, code_solution: str):
-     strategy = os.getenv("DECOMP_STRATEGY", "ast_llm").lower()
-     if strategy == "ast_llm":
+     strategy = os.getenv("DECOMP_STRATEGY", "ts_llm").lower()
+     if strategy in ("ast_llm", "ts_llm"):
          try:
-             from services.ast_slicing import build_steps_from_code
+             if strategy == "ts_llm":
+                 from services.ts_slicing import build_steps_from_code
+             else:
+                 from services.ast_slicing import build_steps_from_code
              skeleton = build_steps_from_code(code_solution)
              if skeleton:
                  refine_prompt = decomposition_refine_prompt.format_prompt(
