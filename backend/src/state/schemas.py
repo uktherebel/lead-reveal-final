@@ -164,7 +164,7 @@ def create_initial_state(
         'analytics_data': {},
         'sandbox_results': [],
 
-        # Hints 
+        # Hints  
         'rolling_stats': {"acc": 0.50, "median_rt": 30.0, "hint_rate": 0.20, "reveal_rate": 0.00, "step_norm": 0.50},
         'bandit': None,
         "next_load_idx": None,

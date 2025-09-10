@@ -31,18 +31,32 @@ class CodeWorker(BaseWorker):
 
     def _get_language_prompt(self, language: str) -> ChatPromptTemplate:
         """Generate language-agnostic code generation prompt"""
-        # AI can generate any language - no need for a registry
         language_name = language.title()
         
-        # Simple comment style detection
+        # Extended comment style detection for better language support
         comment_style = {
             'python': '# ',
             'ruby': '# ',
             'bash': '# ',
             'shell': '# ',
+            'perl': '# ',
+            'r': '# ',
             'haskell': '-- ',
             'sql': '-- ',
-            'lua': '-- '
+            'lua': '-- ',
+            'javascript': '// ',
+            'typescript': '// ',
+            'java': '// ',
+            'c': '// ',
+            'cpp': '// ',
+            'csharp': '// ',
+            'go': '// ',
+            'rust': '// ',
+            'swift': '// ',
+            'kotlin': '// ',
+            'scala': '// ',
+            'php': '// ',
+            'dart': '// '
         }.get(language.lower(), '// ')  # Default to // for most languages
         
         return ChatPromptTemplate.from_messages([
@@ -89,12 +103,13 @@ Generate a complete, working {language_name} solution."""),
                     test_cases = self._generate_test_cases(task)
                     if not test_cases or (
                             len(test_cases) == 1 and test_cases[0].get("call") == "solution()"):
+                        logger.info("Skipping validation - no specific test cases generated")
                         return {
                             "success": True,
                             "code": code,
                             "validated_code": code,
                             "validation": {"skipped": True, "reason": "no specific tests"},
-                            "attempts": 1,
+                            "attempts": attempt + 1,
                         }
                     # Validate code
                     try:

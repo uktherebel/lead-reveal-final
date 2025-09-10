@@ -3,6 +3,25 @@ from typing import Dict, Any, List
 from src.workers.batch_question_worker import BatchQuestionWorker
 
 
+def group_steps_by_cognitive_level(steps: List[Dict[str, Any]]) -> Dict[int, List[Dict[str, Any]]]:
+    """
+    Group steps by their intrinsic_load (cognitive level).
+    
+    Args:
+        steps: List of step dictionaries with 'intrinsic_load' field
+        
+    Returns:
+        Dictionary mapping cognitive level to list of steps at that level
+    """
+    grouped = {}
+    for step in steps:
+        level = step.get('intrinsic_load', 3)  # Default to level 3 if not specified
+        if level not in grouped:
+            grouped[level] = []
+        grouped[level].append(step)
+    return grouped
+
+
 async def gen_questions_for_level_batch(
     steps_by_level: List[Dict[str, Any]], 
     code: str, 
@@ -66,8 +85,12 @@ async def gen_questions_for_level_batch(
         return updated_steps
         
     except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
         print(f"Batch processing failed for level {cognitive_level}: {e}")
+        print(f"Full error traceback:\n{error_details}")
         # Fallback: return steps unchanged rather than failing completely
+        print(f"Returning {len(steps_by_level)} steps unchanged as fallback")
         return steps_by_level
 
 
