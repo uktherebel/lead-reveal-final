@@ -19,7 +19,6 @@ ollama
 numpy
 
 python-dateutil
-contextvars
 
 websockets
 pydantic-settings
@@ -31,7 +30,7 @@ redis
 celery
 pytest
 pytest-asyncio
-tree_sitter_languages
+tree_sitter_languages==1.10.2
 e2b-code-interpreter
 openevals
 
